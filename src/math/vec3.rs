@@ -110,6 +110,11 @@ impl<T: Phantom> From<(f32, f32, f32)> for Vec3f<T> {
         Self::new([x.0, x.1, x.2])
     }
 }
+impl<T: Phantom> From<(isize, isize, isize)> for Vec3f<T> {
+    fn from(x: (isize, isize, isize)) -> Self {
+        Self::new([x.0 as f32, x.1 as f32, x.2 as f32])
+    }
+}
 impl<T: Phantom> std::ops::Add for Vec3f<T> {
     type Output = Self;
     fn add(self, other: Self) -> Self {
