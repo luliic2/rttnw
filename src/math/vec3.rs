@@ -76,6 +76,10 @@ where
         let k = 1.0 / self.magnitude();
         *self * k
     }
+
+    pub fn repeat(x: f32) -> Self {
+        Self::new([x, x, x])
+    }
 }
 impl<T> Vec3f<T>
 where
@@ -133,6 +137,13 @@ impl<T: Phantom> std::ops::Mul<f32> for Vec3f<T> {
     type Output = Self;
     fn mul(self, rhs: f32) -> Self::Output {
         Self::new([self.x() * rhs, self.y() * rhs, self.z() * rhs])
+    }
+}
+
+impl<T: Phantom> std::ops::Mul<Vec3f<T>> for f32 {
+    type Output = Vec3f<T>;
+    fn mul(self, rhs: Vec3f<T>) -> Self::Output {
+        Self::Output::new([rhs.x() * self, rhs.y() * self, rhs.z() * self])
     }
 }
 
