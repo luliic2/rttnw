@@ -5,6 +5,9 @@ mod math;
 use math::{Color, Vec3f, Ray, Position};
 
 fn color(ray: &Ray) -> Vec3f<Color> {
+    if hit_sphere(&(0, 0, -1).into(), 0.5,ray) {
+        return (1, 0, 0).into()
+    }
     let direction = ray.direction().unit();
     // Scale it between `0.0 < t < 1.0`
     let t = (direction.y() + 1.0) * 0.5;
@@ -12,16 +15,26 @@ fn color(ray: &Ray) -> Vec3f<Color> {
     (1.0 - t) * Vec3f::repeat(1.0) + t * Vec3f::new([0.5, 0.7, 1.0])
 }
 
+/// Check if `ray` hits a sphere with center `center` and radius `radius`
+fn hit_sphere(center: &Vec3f<Position>, radius: f32, ray: &Ray) -> bool {
+    let oc = ray.origin() - *center;
+    let a = ray.direction().dot(&ray.direction());
+    let b = 2.0 * oc.dot(&ray.direction());
+    let c = oc.dot(&oc) - radius.powf(2.0);
+    let discriminant = b.powf(2.0) - 4.0*a*c;
+    discriminant > 0.0
+}
+
 fn print_result(nx: isize, ny: isize) {
     let output = File::create("image.ppm").unwrap();
     let mut output = BufWriter::new(output);
-    let lower_left_corner: Vec3f<Position> = (-2.0, -1.0, -1.0).into();
+    let lower_left_corner: Vec3f<Position> = (-2, -1, -1).into();
     // Canvas width
-    let horizontal: Vec3f<Position> = (4.0, 0.0, 0.0).into();
+    let horizontal: Vec3f<Position> = (4, 0, 0).into();
     // Canvas height
-    let vertical: Vec3f<Position> = (0.0, 2.0, 0.0).into();
+    let vertical: Vec3f<Position> = (0, 2, 0).into();
     // Camera eye
-    let origin: Vec3f<Position> = (0.0, 0.0, 0.0).into();
+    let origin: Vec3f<Position> = (0, 0, 0).into();
 
     output
         .write_all(format!("P3\n{} {}\n255\n", nx, ny).as_bytes())
