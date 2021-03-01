@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use super::{Vec3f, Position};
+use super::{Position, Vec3f};
 
 /// A ray is defined as the function
 /// `p(t) = A + tB`, where `A` is the origin of the ray
