@@ -4,11 +4,13 @@ use std::io::{BufWriter, Write};
 use rand::Rng;
 
 mod math;
-use math::{Color, HitRecord, Hittable, List, Position, Ray, Sphere, Vec3f, Camera};
+use math::{Camera, Color, Hittable, List, Position, Ray, Sphere, Vec3f};
 
+/// The resulting color of a ray pointing to a direction
 fn color<T: Hittable>(ray: &Ray, world: &List<T>) -> Vec3f<Color> {
-    let mut record = HitRecord::new();
-    if world.hit(&ray, 0.0, f32::MAX, &mut record) {
+    // If the ray hits something
+    if let Some(record) = world.hit(&ray, 0.0, f32::MAX) {
+        // Return a `shade`
         return 0.5
             * Vec3f::new([
                 record.normal.x() + 1.0,
@@ -16,6 +18,7 @@ fn color<T: Hittable>(ray: &Ray, world: &List<T>) -> Vec3f<Color> {
                 record.normal.z() + 1.0,
             ]);
     }
+    // Else return the horizont, blue -> white gradient
     let direction = ray.direction().unit();
     // Scale it between `0.0 < t < 1.0`
     let t = (direction.y() + 1.0) * 0.5;
@@ -23,6 +26,7 @@ fn color<T: Hittable>(ray: &Ray, world: &List<T>) -> Vec3f<Color> {
     (1.0 - t) * Vec3f::repeat(1.0) + t * Vec3f::new([0.5, 0.7, 1.0])
 }
 
+/// Saves the scene to a .ppm image of size `nx*ny`
 fn print_result(nx: isize, ny: isize, ns: isize) {
     let output = File::create("image.ppm").unwrap();
     let mut output = BufWriter::new(output);
@@ -37,7 +41,7 @@ fn print_result(nx: isize, ny: isize, ns: isize) {
         origin,
         horizontal,
         vertical,
-        lower_left_corner
+        lower_left_corner,
     };
 
     let world = List {
@@ -56,8 +60,10 @@ fn print_result(nx: isize, ny: isize, ns: isize) {
     output
         .write_all(format!("P3\n{} {}\n255\n", nx, ny).as_bytes())
         .unwrap();
+    // For each pixel
     for j in (0..ny).rev() {
         for i in 0..nx {
+            // Calculate the color `ns` times and average the result
             let mut col = Vec3f::repeat(0.0);
             for _ in 0..ns {
                 let u = (i as f32 + rng.gen::<f32>()) / nx as f32;
@@ -66,6 +72,8 @@ fn print_result(nx: isize, ny: isize, ns: isize) {
                 col = col + color(&ray, &world);
             }
             col = col / ns as f32;
+
+            // Scale it from 0..1 to 0..255
             let ir = (255.99 * col.x()) as u8;
             let ig = (255.99 * col.y()) as u8;
             let ib = (255.99 * col.z()) as u8;
