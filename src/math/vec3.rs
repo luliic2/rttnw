@@ -71,6 +71,9 @@ where
     pub fn magnitude(&self) -> f32 {
         (self.x().powf(2.0) + self.y().powf(2.0) + self.z().powf(2.0)).sqrt()
     }
+    pub fn squared_length(&self) -> f32 {
+        self.x().powf(2.0) + self.y().powf(2.0) + self.z().powf(2.0)
+    }
 
     pub fn unit(&self) -> Self {
         let k = 1.0 / self.magnitude();
