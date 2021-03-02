@@ -44,13 +44,13 @@ impl Hittable for Sphere {
             if temp < t_max && temp > t_min {
                 let p = ray.point_at_parameter(temp);
                 let normal = (p - self.center) / self.radius;
-                return Some(HitRecord{ t: temp, p, normal});
+                return Some(HitRecord { t: temp, p, normal });
             }
             let temp = (-b + (b.powf(2.0) - a * c).sqrt()) / a;
             if temp < t_max && temp > t_min {
                 let p = ray.point_at_parameter(temp);
                 let normal = (p - self.center) / self.radius;
-                return Some(HitRecord{ t: temp, p, normal});
+                return Some(HitRecord { t: temp, p, normal });
             }
         }
         None
@@ -62,7 +62,7 @@ pub struct List<T> {
     pub list: Vec<T>,
 }
 impl<T: Hittable> Hittable for List<T> {
-    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32 ) -> Option<HitRecord> {
+    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         let mut record = None;
         let mut closest = t_max;
         for i in &self.list {

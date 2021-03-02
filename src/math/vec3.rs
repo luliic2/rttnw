@@ -83,6 +83,10 @@ where
     pub fn repeat(x: f32) -> Self {
         Self::new([x, x, x])
     }
+
+    pub fn map(self, f: fn(f32) -> f32) -> Self {
+        Self::new([f(self.x()), f(self.y()), f(self.z())])
+    }
 }
 impl<T> Vec3f<T>
 where

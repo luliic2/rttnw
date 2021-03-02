@@ -6,17 +6,32 @@ use rand::Rng;
 mod math;
 use math::{Camera, Color, Hittable, List, Position, Ray, Sphere, Vec3f};
 
+fn random_in_unit_space() -> Vec3f<Position> {
+    let mut rng = rand::thread_rng();
+    loop {
+        // Random point where (x, y, z) belong to -1..1
+        let vector = 2.0 * Vec3f::new([rng.gen(), rng.gen(), rng.gen()]) - Vec3f::repeat(1.0);
+        if vector.squared_length() >= 1.0 {
+            return vector;
+        }
+    }
+}
+
 /// The resulting color of a ray pointing to a direction
 fn color<T: Hittable>(ray: &Ray, world: &List<T>) -> Vec3f<Color> {
     // If the ray hits something
-    if let Some(record) = world.hit(&ray, 0.0, f32::MAX) {
-        // Return a `shade`
+    // `t_min` is not 0.0 to avoid the shadow acne problem
+    if let Some(record) = world.hit(&ray, 0.001, f32::MAX) {
+        // New random point at a random direction. Where the ray is reflected.
+        let target = record.p + record.normal + random_in_unit_space();
         return 0.5
-            * Vec3f::new([
-                record.normal.x() + 1.0,
-                record.normal.y() + 1.0,
-                record.normal.z() + 1.0,
-            ]);
+            * color(
+                &Ray {
+                    a: record.p,
+                    b: target - record.p,
+                },
+                world,
+            );
     }
     // Else return the horizont, blue -> white gradient
     let direction = ray.direction().unit();
@@ -72,7 +87,8 @@ fn print_result(nx: isize, ny: isize, ns: isize) {
                 col = col + color(&ray, &world);
             }
             col = col / ns as f32;
-
+            // Gamma correction
+            let col = col.map(|x| x.sqrt());
             // Scale it from 0..1 to 0..255
             let ir = (255.99 * col.x()) as u8;
             let ig = (255.99 * col.y()) as u8;
