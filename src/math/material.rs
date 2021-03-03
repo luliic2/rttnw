@@ -1,5 +1,5 @@
-use rand::Rng;
 use crate::math::{Color, HitRecord, Ray, Vec3f};
+use rand::Rng;
 
 pub trait Material {
     // fn scatter(ray: &Ray, record: &HitRecord, attenuation: &mut Vec3f<Position>, scattered: &mut Ray) -> bool;
@@ -113,16 +113,22 @@ impl Material for Dielectric {
                 -ray.direction().dot(record.normal) / ray.direction().magnitude(),
             )
         };
-        let (refracted, reflect_probability) =  if let Some(refracted) = ray.direction().refract(outward_normal, ni_over_nt) {
-            (refracted, Self::schlick(cosine, self.refraction_index))
-        } else {
-            (Default::default(), 1.0)
-        };
-        Some((attenuation, Ray {
-            a: record.p,
-            b: if reflect_probability > rng.gen()  {
-                reflected
-            } else { refracted }
-        }))
+        let (refracted, reflect_probability) =
+            if let Some(refracted) = ray.direction().refract(outward_normal, ni_over_nt) {
+                (refracted, Self::schlick(cosine, self.refraction_index))
+            } else {
+                (Default::default(), 1.0)
+            };
+        Some((
+            attenuation,
+            Ray {
+                a: record.p,
+                b: if reflect_probability > rng.gen() {
+                    reflected
+                } else {
+                    refracted
+                },
+            },
+        ))
     }
 }

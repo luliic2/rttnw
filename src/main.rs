@@ -34,20 +34,13 @@ fn color<T: Hittable>(ray: Ray, world: &List<T>, depth: i32) -> Vec3f<Color> {
 fn print_result(nx: isize, ny: isize, ns: isize) {
     let output = File::create("image.ppm").unwrap();
     let mut output = BufWriter::new(output);
-    let lower_left_corner: Vec3f<Position> = (-2.0, -1.0, -1.0).into();
-    // Canvas width
-    let horizontal: Vec3f<Position> = (4.0, 0.0, 0.0).into();
-    // Canvas height
-    let vertical: Vec3f<Position> = (0.0, 2.0, 0.0).into();
-    // Camera eye
-    let origin: Vec3f<Position> = (0.0, 0.0, 0.0).into();
-    let camera = Camera {
-        origin,
-        horizontal,
-        vertical,
-        lower_left_corner,
-    };
-
+    let camera = Camera::new(
+        (-2.0, 2.0, 1.0).into(),
+        (0.0, 0.0, -1.0).into(),
+        (0.0, 1.0, 0.0).into(),
+        20.0,
+        nx as f32 / ny as f32,
+    );
     let world = List {
         list: vec![
             Sphere {
