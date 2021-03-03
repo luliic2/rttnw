@@ -48,6 +48,7 @@ where
     pub fn new(x: f32, y: f32, z: f32) -> Self {
         Self::from([x, y, z])
     }
+
     pub fn x(&self) -> f32 {
         self.items[0]
     }
@@ -91,7 +92,28 @@ where
     pub fn map(self, f: fn(f32) -> f32) -> Self {
         Self::new(f(self.x()), f(self.y()), f(self.z()))
     }
+    pub fn reflect(&self, n: Vec3f<T>) -> Vec3f<T> {
+        *self - 2.0 * self.dot(n) * n
+    }
+    pub fn refract(&self, n: Vec3f<T>, ni_over_nt: f32) -> Option<Vec3f<T>> {
+        let unit = self.unit();
+        let dt = unit.dot(n);
+        let discriminant = 1.0 - ni_over_nt.powf(2.0) * (1.0 - dt.powf(2.0));
+        if discriminant > 0.0 {
+            let result = ni_over_nt * (unit - n * dt) - n * discriminant.sqrt();
+            Some(result)
+        } else {
+            None
+        }
+    }
 }
+
+impl<T: Phantom> Default for Vec3f<T> {
+    fn default() -> Self {
+        Self::repeat(0.0)
+    }
+}
+
 impl Vec3f<Position> {
     pub fn random_in_unit_space() -> Self {
         let mut rng = rand::thread_rng();
@@ -186,5 +208,12 @@ impl<T: Phantom> std::ops::Div<f32> for Vec3f<T> {
 impl<T: Phantom> fmt::Display for Vec3f<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} {} {}", self.x(), self.y(), self.z())
+    }
+}
+impl<T: Phantom> std::ops::Neg for Vec3f<T> {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        self.map(|x| -x)
     }
 }

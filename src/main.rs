@@ -4,7 +4,9 @@ use std::io::{BufWriter, Write};
 use rand::Rng;
 
 mod math;
-use math::{Camera, Color, Hittable, Lambertian, List, Metal, Position, Ray, Sphere, Vec3f};
+use math::{
+    Camera, Color, Dielectric, Hittable, Lambertian, List, Metal, Position, Ray, Sphere, Vec3f,
+};
 
 /// The resulting color of a ray pointing to a direction
 fn color<T: Hittable>(ray: Ray, world: &List<T>, depth: i32) -> Vec3f<Color> {
@@ -66,7 +68,12 @@ fn print_result(nx: isize, ny: isize, ns: isize) {
             Sphere {
                 center: (-1.0, 0.0, -1.0).into(),
                 radius: 0.5,
-                material: Metal::boxed((0.8, 0.8, 0.8).into(), 0.3),
+                material: Dielectric::boxed(1.5),
+            },
+            Sphere {
+                center: (-1.0, 0.0, -1.0).into(),
+                radius: -0.45,
+                material: Dielectric::boxed(1.5),
             },
         ],
     };
