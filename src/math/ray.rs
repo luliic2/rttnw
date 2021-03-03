@@ -5,6 +5,7 @@ use super::{Position, Vec3f};
 /// A ray is defined as the function
 /// `p(t) = A + tB`, where `A` is the origin of the ray
 /// and `B` it's direction.
+#[derive(Clone, Copy)]
 pub struct Ray {
     pub a: Vec3f<Position>,
     pub b: Vec3f<Position>,

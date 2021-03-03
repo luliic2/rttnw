@@ -4,54 +4,41 @@ use std::io::{BufWriter, Write};
 use rand::Rng;
 
 mod math;
-use math::{Camera, Color, Hittable, List, Position, Ray, Sphere, Vec3f};
-
-fn random_in_unit_space() -> Vec3f<Position> {
-    let mut rng = rand::thread_rng();
-    loop {
-        // Random point where (x, y, z) belong to -1..1
-        let vector = 2.0 * Vec3f::new([rng.gen(), rng.gen(), rng.gen()]) - Vec3f::repeat(1.0);
-        if vector.squared_length() >= 1.0 {
-            return vector;
-        }
-    }
-}
+use math::{Camera, Color, Hittable, Lambertian, List, Metal, Position, Ray, Sphere, Vec3f};
 
 /// The resulting color of a ray pointing to a direction
-fn color<T: Hittable>(ray: &Ray, world: &List<T>) -> Vec3f<Color> {
+fn color<T: Hittable>(ray: Ray, world: &List<T>, depth: i32) -> Vec3f<Color> {
     // If the ray hits something
     // `t_min` is not 0.0 to avoid the shadow acne problem
-    if let Some(record) = world.hit(&ray, 0.001, f32::MAX) {
+    if let Some(record) = world.hit(ray, 0.001, f32::MAX) {
         // New random point at a random direction. Where the ray is reflected.
-        let target = record.p + record.normal + random_in_unit_space();
-        return 0.5
-            * color(
-                &Ray {
-                    a: record.p,
-                    b: target - record.p,
-                },
-                world,
-            );
+        return if depth >= 50 {
+            Vec3f::repeat(0.0)
+        } else if let Some((attenuation, scattered)) = record.material.scatter(ray, record) {
+            attenuation * color(scattered, world, depth + 1)
+        } else {
+            Vec3f::repeat(0.0)
+        };
     }
     // Else return the horizont, blue -> white gradient
     let direction = ray.direction().unit();
     // Scale it between `0.0 < t < 1.0`
     let t = (direction.y() + 1.0) * 0.5;
     // (1.0 - t)*WHITE + t*BLUE
-    (1.0 - t) * Vec3f::repeat(1.0) + t * Vec3f::new([0.5, 0.7, 1.0])
+    (1.0 - t) * Vec3f::repeat(1.0) + t * Vec3f::new(0.5, 0.7, 1.0)
 }
 
 /// Saves the scene to a .ppm image of size `nx*ny`
 fn print_result(nx: isize, ny: isize, ns: isize) {
     let output = File::create("image.ppm").unwrap();
     let mut output = BufWriter::new(output);
-    let lower_left_corner: Vec3f<Position> = (-2, -1, -1).into();
+    let lower_left_corner: Vec3f<Position> = (-2.0, -1.0, -1.0).into();
     // Canvas width
-    let horizontal: Vec3f<Position> = (4, 0, 0).into();
+    let horizontal: Vec3f<Position> = (4.0, 0.0, 0.0).into();
     // Canvas height
-    let vertical: Vec3f<Position> = (0, 2, 0).into();
+    let vertical: Vec3f<Position> = (0.0, 2.0, 0.0).into();
     // Camera eye
-    let origin: Vec3f<Position> = (0, 0, 0).into();
+    let origin: Vec3f<Position> = (0.0, 0.0, 0.0).into();
     let camera = Camera {
         origin,
         horizontal,
@@ -62,12 +49,24 @@ fn print_result(nx: isize, ny: isize, ns: isize) {
     let world = List {
         list: vec![
             Sphere {
-                center: (0, 0, -1).into(),
+                center: (0.0, 0.0, -1.0).into(),
                 radius: 0.5,
+                material: Lambertian::boxed((0.8, 0.3, 0.3).into()),
             },
             Sphere {
                 center: (0.0, -100.5, -1.0).into(),
                 radius: 100.0,
+                material: Lambertian::boxed((0.8, 0.8, 0.0).into()),
+            },
+            Sphere {
+                center: (1.0, 0.0, -1.0).into(),
+                radius: 0.5,
+                material: Metal::boxed((0.8, 0.6, 0.2).into(), 1.0),
+            },
+            Sphere {
+                center: (-1.0, 0.0, -1.0).into(),
+                radius: 0.5,
+                material: Metal::boxed((0.8, 0.8, 0.8).into(), 0.3),
             },
         ],
     };
@@ -84,7 +83,7 @@ fn print_result(nx: isize, ny: isize, ns: isize) {
                 let u = (i as f32 + rng.gen::<f32>()) / nx as f32;
                 let v = (j as f32 + rng.gen::<f32>()) / ny as f32;
                 let ray = camera.ray(u, v);
-                col = col + color(&ray, &world);
+                col = col + color(ray, &world, 0);
             }
             col = col / ns as f32;
             // Gamma correction

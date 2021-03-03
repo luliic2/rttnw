@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use rand::Rng;
 use std::fmt;
 use std::marker::PhantomData;
 
@@ -38,11 +39,14 @@ impl<T> Vec3f<T>
 where
     T: Phantom,
 {
-    pub fn new(items: [f32; 3]) -> Self {
+    pub fn from(items: [f32; 3]) -> Self {
         Self {
             items,
             _phantom: PhantomData::<T>,
         }
+    }
+    pub fn new(x: f32, y: f32, z: f32) -> Self {
+        Self::from([x, y, z])
     }
     pub fn x(&self) -> f32 {
         self.items[0]
@@ -55,17 +59,17 @@ where
     }
 
     /// Dot product of two vectors
-    pub fn dot(&self, rhs: &Self) -> f32 {
+    pub fn dot(&self, rhs: Self) -> f32 {
         self.x() * rhs.x() + self.y() * rhs.y() + self.z() * rhs.z()
     }
 
     /// Cross product of two vectors
-    pub fn cross(&self, rhs: &Self) -> Self {
-        Self::new([
+    pub fn cross(&self, rhs: Self) -> Self {
+        Self::new(
             self.y() * rhs.z() - self.z() * rhs.y(),
             -(self.x() * rhs.z() - self.z() * rhs.x()),
             self.x() * rhs.y() - self.y() * rhs.x(),
-        ])
+        )
     }
 
     pub fn magnitude(&self) -> f32 {
@@ -81,11 +85,23 @@ where
     }
 
     pub fn repeat(x: f32) -> Self {
-        Self::new([x, x, x])
+        Self::new(x, x, x)
     }
 
     pub fn map(self, f: fn(f32) -> f32) -> Self {
-        Self::new([f(self.x()), f(self.y()), f(self.z())])
+        Self::new(f(self.x()), f(self.y()), f(self.z()))
+    }
+}
+impl Vec3f<Position> {
+    pub fn random_in_unit_space() -> Self {
+        let mut rng = rand::thread_rng();
+        loop {
+            // Random point where (x, y, z) belong to -1..1
+            let vector = 2.0 * Vec3f::new(rng.gen(), rng.gen(), rng.gen()) - Vec3f::repeat(1.0);
+            if vector.squared_length() >= 1.0 {
+                return vector;
+            }
+        }
     }
 }
 impl<T> Vec3f<T>
@@ -114,61 +130,56 @@ impl PhantomPosition for Position {}
 // Basic operations
 impl<T: Phantom> From<(f32, f32, f32)> for Vec3f<T> {
     fn from(x: (f32, f32, f32)) -> Self {
-        Self::new([x.0, x.1, x.2])
-    }
-}
-impl<T: Phantom> From<(isize, isize, isize)> for Vec3f<T> {
-    fn from(x: (isize, isize, isize)) -> Self {
-        Self::new([x.0 as f32, x.1 as f32, x.2 as f32])
+        Self::new(x.0, x.1, x.2)
     }
 }
 impl<T: Phantom> std::ops::Add for Vec3f<T> {
     type Output = Self;
     fn add(self, other: Self) -> Self {
-        Self::new([
+        Self::new(
             self.x() + other.x(),
             self.y() + other.y(),
             self.z() + other.z(),
-        ])
+        )
     }
 }
 impl<T: Phantom> std::ops::Sub for Vec3f<T> {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
-        Self::new([self.x() - rhs.x(), self.y() - rhs.y(), self.z() - rhs.z()])
+        Self::new(self.x() - rhs.x(), self.y() - rhs.y(), self.z() - rhs.z())
     }
 }
 /// Element-wise multiplication of two vectors.
 impl<T: Phantom> std::ops::Mul for Vec3f<T> {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self::Output {
-        Self::new([self.x() * rhs.x(), self.y() * rhs.y(), self.z() * rhs.z()])
+        Self::new(self.x() * rhs.x(), self.y() * rhs.y(), self.z() * rhs.z())
     }
 }
 impl<T: Phantom> std::ops::Mul<f32> for Vec3f<T> {
     type Output = Self;
     fn mul(self, rhs: f32) -> Self::Output {
-        Self::new([self.x() * rhs, self.y() * rhs, self.z() * rhs])
+        Self::new(self.x() * rhs, self.y() * rhs, self.z() * rhs)
     }
 }
 
 impl<T: Phantom> std::ops::Mul<Vec3f<T>> for f32 {
     type Output = Vec3f<T>;
     fn mul(self, rhs: Vec3f<T>) -> Self::Output {
-        Self::Output::new([rhs.x() * self, rhs.y() * self, rhs.z() * self])
+        Self::Output::new(rhs.x() * self, rhs.y() * self, rhs.z() * self)
     }
 }
 
 impl<T: Phantom> std::ops::Div for Vec3f<T> {
     type Output = Self;
     fn div(self, rhs: Self) -> Self::Output {
-        Self::new([self.x() / rhs.x(), self.y() / rhs.y(), self.z() / rhs.z()])
+        Self::new(self.x() / rhs.x(), self.y() / rhs.y(), self.z() / rhs.z())
     }
 }
 impl<T: Phantom> std::ops::Div<f32> for Vec3f<T> {
     type Output = Self;
     fn div(self, rhs: f32) -> Self::Output {
-        Self::new([self.x() / rhs, self.y() / rhs, self.z() / rhs])
+        Self::new(self.x() / rhs, self.y() / rhs, self.z() / rhs)
     }
 }
 
