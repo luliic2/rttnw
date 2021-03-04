@@ -52,7 +52,7 @@ impl Camera {
         let mut rng = rand::thread_rng();
         loop {
             let p = 2.0 * Vec3f::new(rng.gen(), rng.gen(), 0.0) - Vec3f::new(1.0, 1.0, 0.0);
-            if p.dot(p) >= 1.0 {
+            if p.dot(p) < 1.0 {
                 return p;
             }
         }
