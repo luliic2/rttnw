@@ -1,11 +1,12 @@
 use crate::math::{Color, HitRecord, Ray, Vec3f};
 use rand::Rng;
 
+/// Different materials scatter light differently
 pub trait Material {
-    // fn scatter(ray: &Ray, record: &HitRecord, attenuation: &mut Vec3f<Position>, scattered: &mut Ray) -> bool;
     fn scatter(&self, ray: Ray, record: HitRecord) -> Option<(Vec3f<Color>, Ray)>;
 }
 
+/// Solid material
 #[derive(Copy, Clone)]
 pub struct Lambertian {
     albedo: Vec3f<Color>,
@@ -33,6 +34,7 @@ impl Material for Lambertian {
     }
 }
 
+/// Metalic material
 #[derive(Copy, Clone)]
 pub struct Metal {
     albedo: Vec3f<Color>,
@@ -72,6 +74,7 @@ impl Material for Metal {
     }
 }
 
+/// Glass material
 pub struct Dielectric {
     refraction_index: f32,
 }
@@ -98,7 +101,7 @@ impl Material for Dielectric {
         let reflected = ray.direction().reflect(record.normal);
         // Attenuation is 1 because glass absorbs nothing
         // Kill the blue (z) channel
-        let attenuation = Vec3f::new(1.0, 1.0, 0.0);
+        let attenuation = Vec3f::new(1.0, 1.0, 1.0);
         let (outward_normal, ni_over_nt, cosine) = if ray.direction().dot(record.normal) > 0.0 {
             (
                 -record.normal,

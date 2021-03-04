@@ -1,12 +1,8 @@
-use std::fs::File;
-use std::io::{BufWriter, Write};
-
 use rand::Rng;
 
 mod math;
-use math::{
-    Camera, Color, Dielectric, Hittable, Lambertian, List, Metal, Position, Ray, Sphere, Vec3f,
-};
+use crate::math::Position;
+use math::{Camera, Color, Dielectric, Hittable, Lambertian, List, Metal, Ray, Sphere, Vec3f};
 
 /// The resulting color of a ray pointing to a direction
 fn color<T: Hittable>(ray: Ray, world: &List<T>, depth: i32) -> Vec3f<Color> {
@@ -30,50 +26,100 @@ fn color<T: Hittable>(ray: Ray, world: &List<T>, depth: i32) -> Vec3f<Color> {
     (1.0 - t) * Vec3f::repeat(1.0) + t * Vec3f::new(0.5, 0.7, 1.0)
 }
 
+/// Generate the cover of the book
+fn random_scene() -> List<Sphere> {
+    let mut rng = rand::thread_rng();
+    let mut list = List {
+        list: vec![Sphere {
+            center: (0.0, -1000.0, 0.0).into(),
+            radius: 1000.0,
+            material: Lambertian::boxed((0.5, 0.5, 0.5).into()),
+        }],
+    };
+    for a in -11..11 {
+        for b in -11..11 {
+            let choose_mat: f32 = rng.gen();
+            let center = Vec3f::<Position>::new(
+                a as f32 + 0.9 + rng.gen::<f32>(),
+                0.2,
+                b as f32 + 0.9 + rng.gen::<f32>(),
+            );
+            if (center - Vec3f::new(4.0, 0.2, 0.0)).magnitude() > 0.9 {
+                if choose_mat < 0.8 {
+                    // diffuse
+                    list.push(Sphere {
+                        center,
+                        radius: 0.2,
+                        material: Lambertian::boxed(
+                            (
+                                rng.gen::<f32>() * rng.gen::<f32>(),
+                                rng.gen::<f32>() * rng.gen::<f32>(),
+                                rng.gen::<f32>() * rng.gen::<f32>(),
+                            )
+                                .into(),
+                        ),
+                    });
+                } else if choose_mat < 0.95 {
+                    // metal
+                    list.push(Sphere {
+                        center,
+                        radius: 0.2,
+                        material: Metal::boxed(
+                            (
+                                0.5 * (1.0 - rng.gen::<f32>()),
+                                0.5 * (1.0 - rng.gen::<f32>()),
+                                0.5 * (1.0 - rng.gen::<f32>()),
+                            )
+                                .into(),
+                            0.5 * rng.gen::<f32>(),
+                        ),
+                    });
+                } else {
+                    // glass
+                    list.push(Sphere {
+                        center,
+                        radius: 0.2,
+                        material: Dielectric::boxed(1.5),
+                    })
+                }
+            }
+        }
+    }
+    list.push(Sphere {
+        center: (0.0, 1.0, 0.0).into(),
+        radius: 1.0,
+        material: Dielectric::boxed(1.5)
+    });
+    list.push(Sphere {
+        center: (-4.0, 1.0, 0.0).into(),
+        radius: 1.0,
+        material: Lambertian::boxed((0.4, 0.2, 0.1).into())
+    });
+    list.push(Sphere {
+        center: (4.0, 1.0, 0.0).into(),
+        radius: 1.0,
+        material: Metal::boxed((0.7, 0.6, 0.5).into(), 0.0)
+    });
+
+    list
+}
+
 /// Saves the scene to a .ppm image of size `nx*ny`
-fn print_result(nx: isize, ny: isize, ns: isize) {
-    let output = File::create("image.ppm").unwrap();
-    let mut output = BufWriter::new(output);
+fn print_result(nx: usize, ny: usize, ns: usize) {
+    let lookfrom = (13.0, 2.0, 3.0).into();
+    let lookat = (0.0, 0.0, 0.0).into();
     let camera = Camera::new(
-        (-2.0, 2.0, 1.0).into(),
-        (0.0, 0.0, -1.0).into(),
+        lookfrom,
+        lookat,
         (0.0, 1.0, 0.0).into(),
         20.0,
         nx as f32 / ny as f32,
+        0.1,
+        10.0,
     );
-    let world = List {
-        list: vec![
-            Sphere {
-                center: (0.0, 0.0, -1.0).into(),
-                radius: 0.5,
-                material: Lambertian::boxed((0.8, 0.3, 0.3).into()),
-            },
-            Sphere {
-                center: (0.0, -100.5, -1.0).into(),
-                radius: 100.0,
-                material: Lambertian::boxed((0.8, 0.8, 0.0).into()),
-            },
-            Sphere {
-                center: (1.0, 0.0, -1.0).into(),
-                radius: 0.5,
-                material: Metal::boxed((0.8, 0.6, 0.2).into(), 1.0),
-            },
-            Sphere {
-                center: (-1.0, 0.0, -1.0).into(),
-                radius: 0.5,
-                material: Dielectric::boxed(1.5),
-            },
-            Sphere {
-                center: (-1.0, 0.0, -1.0).into(),
-                radius: -0.45,
-                material: Dielectric::boxed(1.5),
-            },
-        ],
-    };
+    let mut image = Vec::new();
+    let world = random_scene();
     let mut rng = rand::thread_rng();
-    output
-        .write_all(format!("P3\n{} {}\n255\n", nx, ny).as_bytes())
-        .unwrap();
     // For each pixel
     for j in (0..ny).rev() {
         for i in 0..nx {
@@ -87,18 +133,19 @@ fn print_result(nx: isize, ny: isize, ns: isize) {
             }
             col = col / ns as f32;
             // Gamma correction
-            let col = col.map(|x| x.sqrt());
-            // Scale it from 0..1 to 0..255
-            let ir = (255.99 * col.x()) as u8;
-            let ig = (255.99 * col.y()) as u8;
-            let ib = (255.99 * col.z()) as u8;
-            output
-                .write_all(format!("{} {} {}\n", ir, ig, ib).as_bytes())
-                .unwrap();
+            let col = col.map(|x| x.sqrt() * 255.99);
+            let rgba = lodepng::RGBA {
+                r: col.x() as u8,
+                g: col.y() as u8,
+                b: col.z() as u8,
+                a: 255
+            };
+            image.push(rgba);
         }
     }
+    lodepng::encode32_file("image.png", &image, nx, ny).unwrap();
 }
 
 fn main() {
-    print_result(200, 100, 100);
+    print_result(3072, 1920, 50);
 }

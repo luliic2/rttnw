@@ -65,6 +65,11 @@ impl Hittable for Sphere {
 pub struct List<T> {
     pub list: Vec<T>,
 }
+impl<T> List<T> {
+    pub fn push(&mut self, item: T) {
+        self.list.push(item)
+    }
+}
 impl<T: Hittable> Hittable for List<T> {
     fn hit(&self, ray: Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         let mut record = None;
