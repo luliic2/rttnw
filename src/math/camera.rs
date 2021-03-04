@@ -47,7 +47,7 @@ impl Camera {
             lens_radius,
         }
     }
-    /// Generate a point around 
+    /// Generate a point around
     fn random_in_unit_disk() -> Vec3f<Position> {
         let mut rng = rand::thread_rng();
         loop {

@@ -120,7 +120,7 @@ impl Vec3f<Position> {
         loop {
             // Random point where (x, y, z) belong to -1..1
             let vector = 2.0 * Vec3f::new(rng.gen(), rng.gen(), rng.gen()) - Vec3f::repeat(1.0);
-            if vector.squared_length() >= 1.0 {
+            if vector.squared_length() < 1.0 {
                 return vector;
             }
         }
