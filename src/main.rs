@@ -1,4 +1,8 @@
-use rand::Rng;
+use rand::rngs::SmallRng;
+use rand::{Rng, SeedableRng};
+use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
+// use rayon::prelude;
+use indicatif::ParallelProgressIterator;
 
 mod math;
 use crate::math::Position;
@@ -28,7 +32,7 @@ fn color<T: Hittable>(ray: Ray, world: &List<T>, depth: i32) -> Vec3f<Color> {
 
 /// Generate the cover of the book
 fn random_scene() -> List<Sphere> {
-    let mut rng = rand::thread_rng();
+    let mut rng = SmallRng::from_entropy();
     let mut list = List {
         list: vec![Sphere {
             center: (0.0, -1000.0, 0.0).into(),
@@ -88,17 +92,17 @@ fn random_scene() -> List<Sphere> {
     list.push(Sphere {
         center: (0.0, 1.0, 0.0).into(),
         radius: 1.0,
-        material: Dielectric::boxed(1.5)
+        material: Dielectric::boxed(1.5),
     });
     list.push(Sphere {
         center: (-4.0, 1.0, 0.0).into(),
         radius: 1.0,
-        material: Lambertian::boxed((0.4, 0.2, 0.1).into())
+        material: Lambertian::boxed((0.4, 0.2, 0.1).into()),
     });
     list.push(Sphere {
         center: (4.0, 1.0, 0.0).into(),
         radius: 1.0,
-        material: Metal::boxed((0.7, 0.6, 0.5).into(), 0.0)
+        material: Metal::boxed((0.7, 0.6, 0.5).into(), 0.0),
     });
 
     list
@@ -117,35 +121,60 @@ fn print_result(nx: usize, ny: usize, ns: usize) {
         0.1,
         10.0,
     );
-    let mut image = Vec::new();
+    // let mut image = Vec::new();
     let world = random_scene();
-    let mut rng = rand::thread_rng();
     // For each pixel
-    for j in (0..ny).rev() {
-        for i in 0..nx {
-            // Calculate the color `ns` times and average the result
-            let mut col = Vec3f::repeat(0.0);
-            for _ in 0..ns {
-                let u = (i as f32 + rng.gen::<f32>()) / nx as f32;
-                let v = (j as f32 + rng.gen::<f32>()) / ny as f32;
-                let ray = camera.ray(u, v);
-                col = col + color(ray, &world, 0);
-            }
-            col = col / ns as f32;
-            // Gamma correction
-            let col = col.map(|x| x.sqrt() * 255.99);
-            let rgba = lodepng::RGBA {
-                r: col.x() as u8,
-                g: col.y() as u8,
-                b: col.z() as u8,
-                a: 255
-            };
-            image.push(rgba);
-        }
-    }
+    let image: Vec<lodepng::RGBA> = (0..ny)
+        // .into_iter()
+        .into_par_iter()
+        .rev()
+        // .progress()
+        .progress_count(ny as u64)
+        .flat_map(|j| {
+            (0..nx)
+                .into_par_iter()
+                .map(|i| {
+                    // Calculate the color `ns` times and average the result
+                    // let mut col = Vec3f::<Color>::repeat(0.0);
+                    let col = (0..ns)
+                        .into_par_iter()
+                        .fold(
+                            || Vec3f::<Color>::repeat(0.0),
+                            |acc, _| {
+                                let mut rng = SmallRng::from_entropy();
+                                let u = (i as f32 + rng.gen::<f32>()) / nx as f32;
+                                let v = (j as f32 + rng.gen::<f32>()) / ny as f32;
+                                let ray = camera.ray(u, v);
+                                acc + color(ray, &world, 0)
+                                // unimplemented!()
+                            },
+                        )
+                        .sum::<Vec3f<Color>>()
+                        / ns as f32;
+                    // col = col / ns as f32;
+                    // Gamma correction
+                    let col = col.map(|x| x.sqrt() * 255.99);
+                    lodepng::RGBA {
+                        r: col.x() as u8,
+                        g: col.y() as u8,
+                        b: col.z() as u8,
+                        a: 255,
+                    }
+                    // lodepng::RGBA {
+                    //     r: 0,
+                    //     g: 0,
+                    //     b: 0,
+                    //     a: 255
+                    // }
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect();
     lodepng::encode32_file("image.png", &image, nx, ny).unwrap();
 }
 
 fn main() {
-    print_result(3072, 1920, 50);
+    let instant = std::time::Instant::now();
+    print_result(3072, 1920, 100);
+    println!("{:?}", instant.elapsed())
 }

@@ -21,7 +21,7 @@ pub trait Hittable {
 pub struct Sphere {
     pub center: Vec3f<Position>,
     pub radius: f32,
-    pub material: Box<dyn Material>,
+    pub material: Box<dyn Material + Sync>,
 }
 
 impl Hittable for Sphere {

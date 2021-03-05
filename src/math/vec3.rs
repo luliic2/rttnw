@@ -217,3 +217,8 @@ impl<T: Phantom> std::ops::Neg for Vec3f<T> {
         self.map(|x| -x)
     }
 }
+impl<T: Phantom> std::iter::Sum for Vec3f<T> {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(Self::repeat(0.0), std::ops::Add::add)
+    }
+}

@@ -1,5 +1,6 @@
 use crate::math::{Color, HitRecord, Ray, Vec3f};
-use rand::Rng;
+use rand::rngs::SmallRng;
+use rand::{Rng, SeedableRng};
 
 /// Different materials scatter light differently
 pub trait Material {
@@ -97,7 +98,7 @@ impl Dielectric {
 
 impl Material for Dielectric {
     fn scatter(&self, ray: Ray, record: HitRecord) -> Option<(Vec3f<Color>, Ray)> {
-        let mut rng = rand::thread_rng();
+        let mut rng = SmallRng::from_entropy();
         let reflected = ray.direction().reflect(record.normal);
         // Attenuation is 1 because glass absorbs nothing
         // Kill the blue (z) channel

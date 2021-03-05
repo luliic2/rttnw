@@ -1,5 +1,6 @@
 use super::{Position, Ray, Vec3f};
-use rand::Rng;
+use rand::rngs::SmallRng;
+use rand::{Rng, SeedableRng};
 
 pub struct Camera {
     pub origin: Vec3f<Position>,
@@ -49,7 +50,7 @@ impl Camera {
     }
     /// Generate a point around
     fn random_in_unit_disk() -> Vec3f<Position> {
-        let mut rng = rand::thread_rng();
+        let mut rng = SmallRng::from_entropy();
         loop {
             let p = 2.0 * Vec3f::new(rng.gen(), rng.gen(), 0.0) - Vec3f::new(1.0, 1.0, 0.0);
             if p.dot(p) < 1.0 {
