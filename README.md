@@ -1,4 +1,5 @@
-# rtiow
-Raytracing in one weekend implementation in Rust
+# rttnw
+Ray Tracing: The Next Weekend implementation in Rust
 
-![Resulting image](image.png)
+## Ray Tracing in One Weekend
+Implementation here: https://github.com/luliic2/rtiow
