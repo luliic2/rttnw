@@ -5,10 +5,11 @@ use super::{Position, Vec3f};
 /// A ray is defined as the function
 /// `p(t) = A + tB`, where `A` is the origin of the ray
 /// and `B` it's direction.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub struct Ray {
     pub a: Vec3f<Position>,
     pub b: Vec3f<Position>,
+    pub time: f64,
 }
 
 impl Ray {
@@ -21,7 +22,7 @@ impl Ray {
         self.b
     }
     /// Ray as the function `p(t) = A + tB`
-    pub fn point_at_parameter(&self, t: f32) -> Vec3f<Position> {
+    pub fn point_at_parameter(&self, t: f64) -> Vec3f<Position> {
         self.a + t * self.b
     }
 }

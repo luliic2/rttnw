@@ -23,7 +23,7 @@ pub trait PhantomPosition: Phantom {}
 /// // let v4 = v1 + v3;
 /// ```
 pub struct Vec3f<T: Phantom> {
-    items: [f32; 3],
+    items: [f64; 3],
     _phantom: PhantomData<T>,
 }
 
@@ -39,28 +39,28 @@ impl<T> Vec3f<T>
 where
     T: Phantom,
 {
-    pub fn from(items: [f32; 3]) -> Self {
+    pub fn from(items: [f64; 3]) -> Self {
         Self {
             items,
             _phantom: PhantomData::<T>,
         }
     }
-    pub fn new(x: f32, y: f32, z: f32) -> Self {
+    pub fn new(x: f64, y: f64, z: f64) -> Self {
         Self::from([x, y, z])
     }
 
-    pub fn x(&self) -> f32 {
+    pub fn x(&self) -> f64 {
         self.items[0]
     }
-    pub fn y(&self) -> f32 {
+    pub fn y(&self) -> f64 {
         self.items[1]
     }
-    pub fn z(&self) -> f32 {
+    pub fn z(&self) -> f64 {
         self.items[2]
     }
 
     /// Dot product of two vectors
-    pub fn dot(&self, rhs: Self) -> f32 {
+    pub fn dot(&self, rhs: Self) -> f64 {
         self.x() * rhs.x() + self.y() * rhs.y() + self.z() * rhs.z()
     }
 
@@ -73,10 +73,10 @@ where
         )
     }
 
-    pub fn magnitude(&self) -> f32 {
+    pub fn magnitude(&self) -> f64 {
         (self.x().powf(2.0) + self.y().powf(2.0) + self.z().powf(2.0)).sqrt()
     }
-    pub fn squared_length(&self) -> f32 {
+    pub fn squared_length(&self) -> f64 {
         self.x().powf(2.0) + self.y().powf(2.0) + self.z().powf(2.0)
     }
 
@@ -85,17 +85,17 @@ where
         *self * k
     }
 
-    pub fn repeat(x: f32) -> Self {
+    pub fn repeat(x: f64) -> Self {
         Self::new(x, x, x)
     }
 
-    pub fn map(self, f: fn(f32) -> f32) -> Self {
+    pub fn map(self, f: fn(f64) -> f64) -> Self {
         Self::new(f(self.x()), f(self.y()), f(self.z()))
     }
     pub fn reflect(&self, n: Vec3f<T>) -> Vec3f<T> {
         *self - 2.0 * self.dot(n) * n
     }
-    pub fn refract(&self, n: Vec3f<T>, ni_over_nt: f32) -> Option<Vec3f<T>> {
+    pub fn refract(&self, n: Vec3f<T>, ni_over_nt: f64) -> Option<Vec3f<T>> {
         let unit = self.unit();
         let dt = unit.dot(n);
         let discriminant = 1.0 - ni_over_nt.powf(2.0) * (1.0 - dt.powf(2.0));
@@ -130,13 +130,13 @@ impl<T> Vec3f<T>
 where
     T: PhantomColor,
 {
-    pub fn r(&self) -> f32 {
+    pub fn r(&self) -> f64 {
         self.x()
     }
-    pub fn g(&self) -> f32 {
+    pub fn g(&self) -> f64 {
         self.y()
     }
-    pub fn b(&self) -> f32 {
+    pub fn b(&self) -> f64 {
         self.z()
     }
 }
@@ -150,8 +150,8 @@ impl PhantomColor for Color {}
 impl PhantomPosition for Position {}
 
 // Basic operations
-impl<T: Phantom> From<(f32, f32, f32)> for Vec3f<T> {
-    fn from(x: (f32, f32, f32)) -> Self {
+impl<T: Phantom> From<(f64, f64, f64)> for Vec3f<T> {
+    fn from(x: (f64, f64, f64)) -> Self {
         Self::new(x.0, x.1, x.2)
     }
 }
@@ -178,14 +178,14 @@ impl<T: Phantom> std::ops::Mul for Vec3f<T> {
         Self::new(self.x() * rhs.x(), self.y() * rhs.y(), self.z() * rhs.z())
     }
 }
-impl<T: Phantom> std::ops::Mul<f32> for Vec3f<T> {
+impl<T: Phantom> std::ops::Mul<f64> for Vec3f<T> {
     type Output = Self;
-    fn mul(self, rhs: f32) -> Self::Output {
+    fn mul(self, rhs: f64) -> Self::Output {
         Self::new(self.x() * rhs, self.y() * rhs, self.z() * rhs)
     }
 }
 
-impl<T: Phantom> std::ops::Mul<Vec3f<T>> for f32 {
+impl<T: Phantom> std::ops::Mul<Vec3f<T>> for f64 {
     type Output = Vec3f<T>;
     fn mul(self, rhs: Vec3f<T>) -> Self::Output {
         Self::Output::new(rhs.x() * self, rhs.y() * self, rhs.z() * self)
@@ -198,9 +198,9 @@ impl<T: Phantom> std::ops::Div for Vec3f<T> {
         Self::new(self.x() / rhs.x(), self.y() / rhs.y(), self.z() / rhs.z())
     }
 }
-impl<T: Phantom> std::ops::Div<f32> for Vec3f<T> {
+impl<T: Phantom> std::ops::Div<f64> for Vec3f<T> {
     type Output = Self;
-    fn div(self, rhs: f32) -> Self::Output {
+    fn div(self, rhs: f64) -> Self::Output {
         Self::new(self.x() / rhs, self.y() / rhs, self.z() / rhs)
     }
 }

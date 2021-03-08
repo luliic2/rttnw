@@ -3,7 +3,7 @@ use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 
 /// Different materials scatter light differently
-pub trait Material {
+pub trait Material: Send + Sync {
     fn scatter(&self, ray: Ray, record: HitRecord) -> Option<(Vec3f<Color>, Ray)>;
 }
 
@@ -24,11 +24,12 @@ impl Lambertian {
 }
 
 impl Material for Lambertian {
-    fn scatter(&self, _: Ray, record: HitRecord) -> Option<(Vec3f<Color>, Ray)> {
+    fn scatter(&self, ray: Ray, record: HitRecord) -> Option<(Vec3f<Color>, Ray)> {
         let target = record.p + record.normal + Vec3f::random_in_unit_space();
         let scattered = Ray {
             a: record.p,
             b: target - record.p,
+            time: ray.time,
         };
         let attenuation = self.albedo;
         Some((attenuation, scattered))
@@ -39,19 +40,19 @@ impl Material for Lambertian {
 #[derive(Copy, Clone)]
 pub struct Metal {
     albedo: Vec3f<Color>,
-    fuzz: f32,
+    fuzz: f64,
 }
 
 impl Metal {
     #[allow(dead_code)]
-    pub fn new(albedo: Vec3f<Color>, fuzz: f32) -> Self {
+    pub fn new(albedo: Vec3f<Color>, fuzz: f64) -> Self {
         Self {
             albedo,
             fuzz: fuzz.min(1.0),
         }
     }
 
-    pub fn boxed(albedo: Vec3f<Color>, fuzz: f32) -> Box<Self> {
+    pub fn boxed(albedo: Vec3f<Color>, fuzz: f64) -> Box<Self> {
         Box::new(Self {
             albedo,
             fuzz: fuzz.min(1.0),
@@ -65,6 +66,7 @@ impl Material for Metal {
         let scattered = Ray {
             a: record.p,
             b: reflected + self.fuzz * Vec3f::random_in_unit_space(),
+            time: ray.time,
         };
         let attenuation = self.albedo;
         if scattered.direction().dot(record.normal) > 0.0 {
@@ -77,20 +79,20 @@ impl Material for Metal {
 
 /// Glass material
 pub struct Dielectric {
-    refraction_index: f32,
+    refraction_index: f64,
 }
 
 impl Dielectric {
     #[allow(dead_code)]
-    pub fn new(refraction_index: f32) -> Self {
+    pub fn new(refraction_index: f64) -> Self {
         Self { refraction_index }
     }
 
-    pub fn boxed(refraction_index: f32) -> Box<Self> {
+    pub fn boxed(refraction_index: f64) -> Box<Self> {
         Box::new(Self { refraction_index })
     }
 
-    fn schlick(cosine: f32, refraction_index: f32) -> f32 {
+    fn schlick(cosine: f64, refraction_index: f64) -> f64 {
         let r0 = ((1.0 - refraction_index) / (1.0 + refraction_index)).powf(2.0);
         r0 + (1.0 - r0) * (1.0 - cosine).powf(5.0)
     }
@@ -132,6 +134,7 @@ impl Material for Dielectric {
                 } else {
                     refracted
                 },
+                time: ray.time,
             },
         ))
     }
