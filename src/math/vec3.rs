@@ -8,6 +8,7 @@ use std::marker::PhantomData;
 pub trait Phantom {}
 pub trait PhantomColor: Phantom {}
 pub trait PhantomPosition: Phantom {}
+type Precision = f64;
 
 /// Struct that defines a vector of size 3
 /// The type parameter it's to improve type safety
@@ -22,8 +23,8 @@ pub trait PhantomPosition: Phantom {}
 /// // This is not fine
 /// // let v4 = v1 + v3;
 /// ```
-pub struct Vec3f<T: Phantom> {
-    items: [f64; 3],
+pub struct Vec3f<T> {
+    items: [Precision; 3],
     _phantom: PhantomData<T>,
 }
 
@@ -39,23 +40,23 @@ impl<T> Vec3f<T>
 where
     T: Phantom,
 {
-    pub fn from(items: [f64; 3]) -> Self {
+    pub fn from(items: [Precision; 3]) -> Self {
         Self {
             items,
             _phantom: PhantomData::<T>,
         }
     }
-    pub fn new(x: f64, y: f64, z: f64) -> Self {
+    pub fn new(x: Precision, y: Precision, z: Precision) -> Self {
         Self::from([x, y, z])
     }
 
-    pub fn x(&self) -> f64 {
+    pub fn x(&self) -> Precision {
         self.items[0]
     }
-    pub fn y(&self) -> f64 {
+    pub fn y(&self) -> Precision {
         self.items[1]
     }
-    pub fn z(&self) -> f64 {
+    pub fn z(&self) -> Precision {
         self.items[2]
     }
 
@@ -89,7 +90,7 @@ where
         Self::new(x, x, x)
     }
 
-    pub fn map(self, f: fn(f64) -> f64) -> Self {
+    pub fn map(self, f: fn(Precision) -> Precision) -> Self {
         Self::new(f(self.x()), f(self.y()), f(self.z()))
     }
     pub fn reflect(&self, n: Vec3f<T>) -> Vec3f<T> {
@@ -105,6 +106,9 @@ where
         } else {
             None
         }
+    }
+    pub fn at(&self, x: usize) -> Precision {
+        self.items[x]
     }
 }
 
@@ -150,8 +154,8 @@ impl PhantomColor for Color {}
 impl PhantomPosition for Position {}
 
 // Basic operations
-impl<T: Phantom> From<(f64, f64, f64)> for Vec3f<T> {
-    fn from(x: (f64, f64, f64)) -> Self {
+impl<T: Phantom> From<(Precision, Precision, Precision)> for Vec3f<T> {
+    fn from(x: (Precision, Precision, Precision)) -> Self {
         Self::new(x.0, x.1, x.2)
     }
 }

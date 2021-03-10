@@ -1,7 +1,7 @@
+use indicatif::ParallelProgressIterator;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
-use indicatif::ParallelProgressIterator;
 
 mod math;
 use crate::math::Position;
@@ -127,7 +127,7 @@ fn print_result(width: usize, aspect_ratio: f64, samples: usize) {
         aperture: 0.1,
         focus_distance: 10.0,
         open_time: 0.0,
-        close_time: 1.0
+        close_time: 1.0,
     });
     // let mut image = Vec::new();
     let world = random_scene();
