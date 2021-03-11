@@ -1,4 +1,4 @@
-use indicatif::ParallelProgressIterator;
+use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
@@ -6,9 +6,11 @@ use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterato
 mod math;
 use crate::math::Position;
 use math::{
-    Camera, CameraDescriptor, Color, Dielectric, Hittable, Lambertian, List, Metal, MovingSphere,
-    Ray, Sphere, Vec3f,
+    Camera, CameraDescriptor, Checker, Color, Dielectric, Hittable, Lambertian, List, Metal,
+    MovingSphere, Ray, Sphere, Vec3f,
 };
+use std::error::Error;
+use std::sync::Arc;
 
 /// The resulting color of a ray pointing to a direction
 fn color(ray: Ray, world: &List, depth: i32) -> Vec3f<Color> {
@@ -36,10 +38,14 @@ fn color(ray: Ray, world: &List, depth: i32) -> Vec3f<Color> {
 fn random_scene() -> List {
     let mut rng = SmallRng::from_entropy();
     let mut list = List::new();
+    let checker = Checker {
+        odd: Arc::new(Vec3f::new(0.2, 0.3, 0.1)),
+        even: Arc::new(Vec3f::new(0.9, 0.9, 0.9)),
+    };
     list.push(Sphere {
         center: (0.0, -1000.0, 0.0).into(),
         radius: 1000.0,
-        material: Lambertian::boxed((0.5, 0.5, 0.5).into()),
+        material: Lambertian::boxed(checker),
     });
     for a in -11..11 {
         for b in -11..11 {
@@ -59,14 +65,11 @@ fn random_scene() -> List {
                         initial_time: 0.0,
                         final_time: 1.0,
                         radius: 0.2,
-                        material: Lambertian::boxed(
-                            (
-                                rng.gen::<f64>() * rng.gen::<f64>(),
-                                rng.gen::<f64>() * rng.gen::<f64>(),
-                                rng.gen::<f64>() * rng.gen::<f64>(),
-                            )
-                                .into(),
-                        ),
+                        material: Lambertian::boxed(Vec3f::new(
+                            rng.gen::<f64>() * rng.gen::<f64>(),
+                            rng.gen::<f64>() * rng.gen::<f64>(),
+                            rng.gen::<f64>() * rng.gen::<f64>(),
+                        )),
                     });
                 } else if choose_mat < 0.95 {
                     // metal
@@ -102,7 +105,7 @@ fn random_scene() -> List {
     list.push(Sphere {
         center: (-4.0, 1.0, 0.0).into(),
         radius: 1.0,
-        material: Lambertian::boxed((0.4, 0.2, 0.1).into()),
+        material: Lambertian::boxed(Vec3f::new(0.4, 0.2, 0.1)),
     });
     list.push(Sphere {
         center: (4.0, 1.0, 0.0).into(),
@@ -113,31 +116,79 @@ fn random_scene() -> List {
     list
 }
 
+fn two_spheres() -> List {
+    let mut world = List::new();
+    let checker = Arc::new(Checker {
+        odd: Arc::new(Vec3f::new(0.2, 0.3, 0.1)),
+        even: Arc::new(Vec3f::new(0.9, 0.9, 0.9)),
+    });
+    world.push(Sphere {
+        center: Vec3f::new(0.0, -10.0, 0.0),
+        radius: 10.0,
+        material: Box::new(Lambertian::from(&checker)),
+    });
+    world.push(Sphere {
+        center: Vec3f::new(0.0, 10.0, 0.0),
+        radius: 10.0,
+        material: Box::new(Lambertian::from(&checker)),
+    });
+
+    world
+}
+
 /// Saves the scene to a .png image of size `nx*ny`
-fn print_result(width: usize, aspect_ratio: f64, samples: usize) {
+fn print_result(width: usize, aspect_ratio: f64, samples: usize, scene: usize) {
     let height = (width as f64 / aspect_ratio) as usize;
-    let lookfrom = (13.0, 2.0, 3.0).into();
-    let lookat = (0.0, 0.0, 0.0).into();
+    let (world, lookfrom, lookat, vertical_fov, aperture) = match scene {
+        1 => {
+            println!("Running scene random_scene");
+            (
+                random_scene(),
+                Vec3f::new(13.0, 2.0, 3.0),
+                Vec3f::repeat(0.0),
+                20.0,
+                0.1,
+            )
+        },
+        2 => {
+            println!("Running scene two_spheres");
+            (
+            two_spheres(),
+            Vec3f::new(13.0, 2.0, 3.0),
+            Vec3f::repeat(0.0),
+            20.0,
+            Default::default(),
+            )
+        },
+        _ => panic!("Wrong scene"),
+    };
+    let view_up = Vec3f::new(0.0, 1.0, 0.0);
+    let focus_distance = 10.0;
     let camera = Camera::new(&CameraDescriptor {
         lookfrom,
         lookat,
-        view_up: (0.0, 1.0, 0.0).into(),
-        vertical_fov: 20.0,
+        view_up,
+        vertical_fov,
         aspect_ratio,
-        aperture: 0.1,
-        focus_distance: 10.0,
+        aperture,
+        focus_distance,
         open_time: 0.0,
         close_time: 1.0,
     });
+
+    let progress = ProgressBar::new(height as u64).with_style(ProgressStyle::default_spinner()
+                                                                  // .tick_chars("/|\\- ")
+                                                                  .template("{pos}/{len} {spinner:.dim.bold}"));
     // let mut image = Vec::new();
-    let world = random_scene();
+    // let world = random_scene();
     // For each pixel
     let image: Vec<lodepng::RGBA> = (0..height)
         // .into_iter()
         .into_par_iter()
         .rev()
         // .progress()
-        .progress_count(height as u64)
+        .progress_with(progress)
+        // .progress_count(height as u64)
         .flat_map(|j| {
             (0..width)
                 .into_par_iter()
@@ -181,8 +232,12 @@ fn print_result(width: usize, aspect_ratio: f64, samples: usize) {
     lodepng::encode32_file("image.png", &image, width, height).unwrap();
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
+    let args: Vec<String> = std::env::args().collect();
+    let scene = args.get(1).unwrap_or(&String::from("1")).parse()?;
+    println!("Scene number: {}", scene);
     let instant = std::time::Instant::now();
-    print_result(400, 16.0 / 9.0, 100);
-    println!("{:?}", instant.elapsed())
+    print_result(400, 16.0 / 9.0, 100, scene);
+    println!("{:?}", instant.elapsed());
+    Ok(())
 }

@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![allow(clippy::many_single_char_names)]
 
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
@@ -17,6 +18,9 @@ pub struct HitRecord<'a> {
     pub p: Vec3f<Position>,
     pub normal: Vec3f<Position>,
     pub material: &'a dyn Material,
+    /// Texture coordinates
+    pub u: f64,
+    pub v: f64,
 }
 
 /// Trait for objects that a ray can hit.
@@ -30,6 +34,16 @@ pub struct Sphere {
     pub center: Vec3f<Position>,
     pub radius: f64,
     pub material: Box<dyn Material>,
+}
+
+impl Sphere {
+    fn uv(p: Vec3f<Position>) -> (f64, f64) {
+        let theta = f64::acos(-p.y());
+        let phi = f64::atan2(-p.z(), p.x()) + std::f64::consts::PI;
+        let u = phi / (2.0 * std::f64::consts::PI);
+        let v = theta / std::f64::consts::PI;
+        (u, v)
+    }
 }
 
 impl Hittable for Sphere {
@@ -58,11 +72,14 @@ impl Hittable for Sphere {
         let t = root;
         let p = ray.point_at_parameter(root);
         let normal = (p - self.center) / self.radius;
+        let (u, v) = Self::uv(normal);
         Some(HitRecord {
             t,
             p,
             normal,
             material: self.material.as_ref(),
+            u,
+            v,
         })
     }
 
@@ -159,11 +176,14 @@ impl Hittable for MovingSphere {
         let t = root;
         let p = ray.point_at_parameter(root);
         let normal = (p - self.center(ray.time)) / self.radius;
+        let (u, v) = Default::default();
         Some(HitRecord {
             t,
             p,
             normal,
             material: self.material.as_ref(),
+            u,
+            v,
         })
     }
 
@@ -217,7 +237,7 @@ impl BvhTree {
             }
             2 => {
                 let first: Arc<dyn Hittable> = objects.remove(0).into();
-                let second: Arc<dyn Hittable> =objects.remove(0).into();
+                let second: Arc<dyn Hittable> = objects.remove(0).into();
                 match comparator(&*first, &*second) {
                     Ordering::Less => (first, second),
                     _ => (second, first),
@@ -226,33 +246,27 @@ impl BvhTree {
             _ => {
                 objects.sort_by(|x, y| comparator(&**x, &**y));
                 let mid = start + object_span / 2;
-                let left: Arc<dyn Hittable> = Arc::new(Self::new(
-                    objects,
-                    start,
-                    mid,
-                    initial_time,
-                    final_time,
-                ));
-                let right: Arc<dyn Hittable> = Arc::new(Self::new(
-                    objects,
-                    mid,
-                    end,
-                    initial_time,
-                    final_time,
-                ));
+                let left: Arc<dyn Hittable> =
+                    Arc::new(Self::new(objects, start, mid, initial_time, final_time));
+                let right: Arc<dyn Hittable> =
+                    Arc::new(Self::new(objects, mid, end, initial_time, final_time));
 
                 (left, right)
             }
         };
 
-        let box_left = left.bounding_box(initial_time, final_time).unwrap_or_else(|| {
-            eprintln!("No bounding box in BvhTree constructor");
-            Default::default()
-        });
-        let box_right = right.bounding_box(initial_time, final_time).unwrap_or_else(|| {
-            eprintln!("No bounding box in BvhTree constructor");
-            Default::default()
-        });
+        let box_left = left
+            .bounding_box(initial_time, final_time)
+            .unwrap_or_else(|| {
+                eprintln!("No bounding box in BvhTree constructor");
+                Default::default()
+            });
+        let box_right = right
+            .bounding_box(initial_time, final_time)
+            .unwrap_or_else(|| {
+                eprintln!("No bounding box in BvhTree constructor");
+                Default::default()
+            });
 
         let bound = box_left.surrounding(box_right);
         Self { bound, left, right }

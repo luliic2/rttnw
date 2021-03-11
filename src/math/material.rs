@@ -1,6 +1,7 @@
-use crate::math::{Color, HitRecord, Ray, Vec3f};
+use crate::math::{Color, HitRecord, Ray, Texture, Vec3f};
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
+use std::sync::Arc;
 
 /// Different materials scatter light differently
 pub trait Material: Send + Sync {
@@ -8,18 +9,28 @@ pub trait Material: Send + Sync {
 }
 
 /// Solid material
-#[derive(Copy, Clone)]
+// #[derive(Copy, Clone)]
 pub struct Lambertian {
-    albedo: Vec3f<Color>,
+    albedo: Arc<dyn Texture>,
 }
 
 impl Lambertian {
     #[allow(dead_code)]
-    pub fn new(albedo: Vec3f<Color>) -> Self {
-        Self { albedo }
+    pub fn new<T: 'static + Texture>(albedo: T) -> Self {
+        Self {
+            albedo: Arc::new(albedo),
+        }
     }
-    pub fn boxed(albedo: Vec3f<Color>) -> Box<Self> {
-        Box::new(Self { albedo })
+    #[allow(dead_code)]
+    pub fn from<T: 'static + Texture>(albedo: &Arc<T>) -> Self {
+        Self {
+            albedo: albedo.clone(),
+        }
+    }
+    pub fn boxed<T: 'static + Texture>(albedo: T) -> Box<Self> {
+        Box::new(Self {
+            albedo: Arc::new(albedo),
+        })
     }
 }
 
@@ -31,7 +42,7 @@ impl Material for Lambertian {
             b: target - record.p,
             time: ray.time,
         };
-        let attenuation = self.albedo;
+        let attenuation = self.albedo.value(record.u, record.v, record.p);
         Some((attenuation, scattered))
     }
 }
