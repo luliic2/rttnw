@@ -87,15 +87,16 @@ impl Perlin {
     }
 
     pub fn turbulence(&self, point: Vec3f<Position>, depth: u32) -> f64 {
-        if depth == 0 { return 0.; }
-        let (accumulator, _temp, _weight) =
-            (0..depth).fold((0.0, point, 1.0), |accumulator, _| {
-                let accum = accumulator.0 + accumulator.2 * self.noise(accumulator.1);
-                let weight = accumulator.2 * 0.5;
-                let temp = accumulator.1 * 2.0;
+        if depth == 0 {
+            return 0.;
+        }
+        let (accumulator, _temp, _weight) = (0..depth).fold((0.0, point, 1.0), |accumulator, _| {
+            let accum = accumulator.0 + accumulator.2 * self.noise(accumulator.1);
+            let weight = accumulator.2 * 0.5;
+            let temp = accumulator.1 * 2.0;
 
-                (accum, temp, weight)
-            });
+            (accum, temp, weight)
+        });
         accumulator
     }
 }

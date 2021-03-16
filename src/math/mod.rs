@@ -13,5 +13,5 @@ pub use hittable::{HitRecord, Hittable, List, MovingSphere, Sphere};
 pub use material::{Dielectric, Lambertian, Material, Metal};
 pub use noise::Perlin;
 pub use ray::Ray;
-pub use texture::{CheckerTexture, NoiseTexture, Texture};
+pub use texture::{CheckerTexture, NoiseTexture, Texture, ImageTexture};
 pub use vec3::{Color, Position, Vec3f};

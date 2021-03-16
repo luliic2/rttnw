@@ -9,6 +9,17 @@ mod scenes;
 use math::{Camera, CameraDescriptor, Color, Hittable, List, Ray, Vec3f};
 use std::error::Error;
 
+// use image::Rgba;
+
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct Rgba {
+    r: u8,
+    g: u8,
+    b: u8,
+    a: u8,
+}
+
 /// The resulting color of a ray pointing to a direction
 fn color(ray: Ray, world: &List, depth: i32) -> Vec3f<Color> {
     // If the ray hits something
@@ -32,8 +43,8 @@ fn color(ray: Ray, world: &List, depth: i32) -> Vec3f<Color> {
 }
 
 /// Saves the scene to a .png image of size `nx*ny`
-fn print_result(width: usize, aspect_ratio: f64, samples: usize, scene: usize) {
-    let height = (width as f64 / aspect_ratio) as usize;
+fn print_result(width: u32, aspect_ratio: f64, samples: usize, scene: usize) {
+    let height = (width as f64 / aspect_ratio) as u32;
     let (world, lookfrom, lookat, vertical_fov, aperture) = match scene {
         1 => {
             println!("Running scene random_scene");
@@ -65,6 +76,16 @@ fn print_result(width: usize, aspect_ratio: f64, samples: usize, scene: usize) {
                 Default::default(),
             )
         }
+        4 => {
+            println!("Running scene earth");
+            (
+                scenes::earth(),
+                Vec3f::new(13.0, 2.0, 3.0),
+                Vec3f::repeat(0.0),
+                20.0,
+                Default::default(),
+            )
+        }
         _ => panic!("Wrong scene"),
     };
     let view_up = Vec3f::new(0.0, 1.0, 0.0);
@@ -81,13 +102,12 @@ fn print_result(width: usize, aspect_ratio: f64, samples: usize, scene: usize) {
         close_time: 1.0,
     });
 
-    let progress = ProgressBar::new(height as u64).with_style(
-        ProgressStyle::default_spinner()
-            // .tick_chars("/|\\- ")
-            .template("{pos}/{len} {spinner:.dim.bold}"),
-    );
+    let progress = ProgressBar::new(height as u64)
+        .with_style(ProgressStyle::default_spinner().template("{pos}/{len} {spinner:.dim.bold}"));
     // For each pixel
-    let image: Vec<lodepng::RGBA> = (0..height)
+    // let image: Vec<u8> =
+    let image: Vec<Rgba> = /*Vec::with_capacity(4 * width * height);*/
+        (0..height)
         // .into_iter()
         .into_par_iter()
         .rev()
@@ -99,7 +119,6 @@ fn print_result(width: usize, aspect_ratio: f64, samples: usize, scene: usize) {
                 .into_par_iter()
                 .map(|i| {
                     // Calculate the color `ns` times and average the result
-                    // let mut col = Vec3f::<Color>::repeat(0.0);
                     let col = (0..samples)
                         .into_par_iter()
                         .fold(
@@ -110,31 +129,24 @@ fn print_result(width: usize, aspect_ratio: f64, samples: usize, scene: usize) {
                                 let v = (j as f64 + rng.gen::<f64>()) / height as f64;
                                 let ray = camera.ray(u, v);
                                 acc + color(ray, &world, 0)
-                                // unimplemented!()
                             },
                         )
                         .sum::<Vec3f<Color>>()
                         / samples as f64;
-                    // col = col / ns as f64;
                     // Gamma correction
                     let col = col.map(|x| x.sqrt() * 255.99);
-                    lodepng::RGBA {
+                    Rgba {
                         r: col.x() as u8,
                         g: col.y() as u8,
                         b: col.z() as u8,
                         a: 255,
                     }
-                    // lodepng::RGBA {
-                    //     r: 0,
-                    //     g: 0,
-                    //     b: 0,
-                    //     a: 255
-                    // }
                 })
                 .collect::<Vec<_>>()
         })
         .collect();
-    lodepng::encode32_file("image.png", &image, width, height).unwrap();
+    let buffer: &[u8] = bytemuck::cast_slice(&image);
+    image::save_buffer("image.png", buffer, width, height, image::ColorType::Rgba8).unwrap()
 }
 
 fn main() -> Result<(), Box<dyn Error>> {

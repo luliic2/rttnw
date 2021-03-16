@@ -42,21 +42,26 @@ impl<T> Vec3f<T>
 where
     T: Phantom,
 {
-    pub fn from(items: [Precision; 3]) -> Self {
-        Self {
-            items,
-            _phantom: PhantomData::<T>,
-        }
+    pub fn from(items: &[Precision]) -> Self {
+        assert!(items.len() >= 3);
+        Self::new(items[0], items[1], items[2])
+    }
+    pub fn scaled(items: &[u8], scale: Precision) -> Self {
+        assert!(items.len() >= 3);
+        Self::new(items[0] as Precision * scale, items[1] as Precision * scale, items[2] as Precision * scale)
     }
     pub fn new(x: Precision, y: Precision, z: Precision) -> Self {
-        Self::from([x, y, z])
+        Self {
+            items: [x, y, z],
+            _phantom: PhantomData::<T>,
+        }
     }
     pub fn random(range: std::ops::Range<f64>) -> Self {
         let mut rng = SmallRng::from_entropy();
         let x = rng.gen_range(range.clone());
         let y = rng.gen_range(range.clone());
         let z = rng.gen_range(range);
-        Self::from([x, y, z])
+        Self::new(x, y, z)
     }
 
     pub fn x(&self) -> Precision {

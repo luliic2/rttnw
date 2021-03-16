@@ -3,7 +3,7 @@ use rand::{Rng, SeedableRng};
 
 use crate::math::{
     CheckerTexture, Dielectric, Lambertian, List, Metal, MovingSphere, NoiseTexture, Position,
-    Sphere, Vec3f,
+    Sphere, Vec3f, ImageTexture
 };
 use std::sync::Arc;
 
@@ -123,5 +123,16 @@ pub fn two_perlin_spheres() -> List {
         material: Box::new(Lambertian::from(&perlin)),
     });
 
+    world
+}
+
+pub fn earth() -> List {
+    let mut world = List::new();
+    let earth = ImageTexture::new("assets/earth.png");
+    world.push(Sphere {
+        center: Vec3f::repeat(0.0),
+        radius: 2.,
+        material: Box::new(Lambertian::new(earth))
+    });
     world
 }
