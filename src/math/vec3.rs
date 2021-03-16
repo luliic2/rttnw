@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 
-use rand::Rng;
+use rand::rngs::SmallRng;
+use rand::{Rng, SeedableRng};
+
 use std::fmt;
 use std::marker::PhantomData;
 
@@ -47,6 +49,13 @@ where
         }
     }
     pub fn new(x: Precision, y: Precision, z: Precision) -> Self {
+        Self::from([x, y, z])
+    }
+    pub fn random(range: std::ops::Range<f64>) -> Self {
+        let mut rng = SmallRng::from_entropy();
+        let x = rng.gen_range(range.clone());
+        let y = rng.gen_range(range.clone());
+        let z = rng.gen_range(range);
         Self::from([x, y, z])
     }
 

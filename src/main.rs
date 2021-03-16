@@ -4,13 +4,10 @@ use rand::{Rng, SeedableRng};
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 mod math;
-use crate::math::Position;
-use math::{
-    Camera, CameraDescriptor, Checker, Color, Dielectric, Hittable, Lambertian, List, Metal,
-    MovingSphere, Ray, Sphere, Vec3f,
-};
+mod scenes;
+
+use math::{Camera, CameraDescriptor, Color, Hittable, List, Ray, Vec3f};
 use std::error::Error;
-use std::sync::Arc;
 
 /// The resulting color of a ray pointing to a direction
 fn color(ray: Ray, world: &List, depth: i32) -> Vec3f<Color> {
@@ -34,108 +31,6 @@ fn color(ray: Ray, world: &List, depth: i32) -> Vec3f<Color> {
     (1.0 - t) * Vec3f::repeat(1.0) + t * Vec3f::new(0.5, 0.7, 1.0)
 }
 
-/// Generate the cover of the book
-fn random_scene() -> List {
-    let mut rng = SmallRng::from_entropy();
-    let mut list = List::new();
-    let checker = Checker {
-        odd: Arc::new(Vec3f::new(0.2, 0.3, 0.1)),
-        even: Arc::new(Vec3f::new(0.9, 0.9, 0.9)),
-    };
-    list.push(Sphere {
-        center: (0.0, -1000.0, 0.0).into(),
-        radius: 1000.0,
-        material: Lambertian::boxed(checker),
-    });
-    for a in -11..11 {
-        for b in -11..11 {
-            let choose_mat: f64 = rng.gen();
-            let center = Vec3f::<Position>::new(
-                a as f64 + 0.9 + rng.gen::<f64>(),
-                0.2,
-                b as f64 + 0.9 + rng.gen::<f64>(),
-            );
-            if (center - Vec3f::new(4.0, 0.2, 0.0)).magnitude() > 0.9 {
-                if choose_mat < 0.8 {
-                    let final_center = center + Vec3f::new(0.0, rng.gen_range(0.0..0.5), 0.0);
-                    // diffuse
-                    list.push(MovingSphere {
-                        initial_center: center,
-                        final_center,
-                        initial_time: 0.0,
-                        final_time: 1.0,
-                        radius: 0.2,
-                        material: Lambertian::boxed(Vec3f::new(
-                            rng.gen::<f64>() * rng.gen::<f64>(),
-                            rng.gen::<f64>() * rng.gen::<f64>(),
-                            rng.gen::<f64>() * rng.gen::<f64>(),
-                        )),
-                    });
-                } else if choose_mat < 0.95 {
-                    // metal
-                    list.push(Sphere {
-                        center,
-                        radius: 0.2,
-                        material: Metal::boxed(
-                            (
-                                0.5 * (1.0 - rng.gen::<f64>()),
-                                0.5 * (1.0 - rng.gen::<f64>()),
-                                0.5 * (1.0 - rng.gen::<f64>()),
-                            )
-                                .into(),
-                            0.5 * rng.gen::<f64>(),
-                        ),
-                    });
-                } else {
-                    // glass
-                    list.push(Sphere {
-                        center,
-                        radius: 0.2,
-                        material: Dielectric::boxed(1.5),
-                    })
-                }
-            }
-        }
-    }
-    list.push(Sphere {
-        center: (0.0, 1.0, 0.0).into(),
-        radius: 1.0,
-        material: Dielectric::boxed(1.5),
-    });
-    list.push(Sphere {
-        center: (-4.0, 1.0, 0.0).into(),
-        radius: 1.0,
-        material: Lambertian::boxed(Vec3f::new(0.4, 0.2, 0.1)),
-    });
-    list.push(Sphere {
-        center: (4.0, 1.0, 0.0).into(),
-        radius: 1.0,
-        material: Metal::boxed((0.7, 0.6, 0.5).into(), 0.0),
-    });
-
-    list
-}
-
-fn two_spheres() -> List {
-    let mut world = List::new();
-    let checker = Arc::new(Checker {
-        odd: Arc::new(Vec3f::new(0.2, 0.3, 0.1)),
-        even: Arc::new(Vec3f::new(0.9, 0.9, 0.9)),
-    });
-    world.push(Sphere {
-        center: Vec3f::new(0.0, -10.0, 0.0),
-        radius: 10.0,
-        material: Box::new(Lambertian::from(&checker)),
-    });
-    world.push(Sphere {
-        center: Vec3f::new(0.0, 10.0, 0.0),
-        radius: 10.0,
-        material: Box::new(Lambertian::from(&checker)),
-    });
-
-    world
-}
-
 /// Saves the scene to a .png image of size `nx*ny`
 fn print_result(width: usize, aspect_ratio: f64, samples: usize, scene: usize) {
     let height = (width as f64 / aspect_ratio) as usize;
@@ -143,23 +38,33 @@ fn print_result(width: usize, aspect_ratio: f64, samples: usize, scene: usize) {
         1 => {
             println!("Running scene random_scene");
             (
-                random_scene(),
+                scenes::random_scene(),
                 Vec3f::new(13.0, 2.0, 3.0),
                 Vec3f::repeat(0.0),
                 20.0,
                 0.1,
             )
-        },
+        }
         2 => {
             println!("Running scene two_spheres");
             (
-            two_spheres(),
-            Vec3f::new(13.0, 2.0, 3.0),
-            Vec3f::repeat(0.0),
-            20.0,
-            Default::default(),
+                scenes::two_spheres(),
+                Vec3f::new(13.0, 2.0, 3.0),
+                Vec3f::repeat(0.0),
+                20.0,
+                Default::default(),
             )
-        },
+        }
+        3 => {
+            println!("Running scene two_perlin_spheres");
+            (
+                scenes::two_perlin_spheres(),
+                Vec3f::new(13.0, 2.0, 3.0),
+                Vec3f::repeat(0.0),
+                20.0,
+                Default::default(),
+            )
+        }
         _ => panic!("Wrong scene"),
     };
     let view_up = Vec3f::new(0.0, 1.0, 0.0);
@@ -176,11 +81,11 @@ fn print_result(width: usize, aspect_ratio: f64, samples: usize, scene: usize) {
         close_time: 1.0,
     });
 
-    let progress = ProgressBar::new(height as u64).with_style(ProgressStyle::default_spinner()
-                                                                  // .tick_chars("/|\\- ")
-                                                                  .template("{pos}/{len} {spinner:.dim.bold}"));
-    // let mut image = Vec::new();
-    // let world = random_scene();
+    let progress = ProgressBar::new(height as u64).with_style(
+        ProgressStyle::default_spinner()
+            // .tick_chars("/|\\- ")
+            .template("{pos}/{len} {spinner:.dim.bold}"),
+    );
     // For each pixel
     let image: Vec<lodepng::RGBA> = (0..height)
         // .into_iter()
