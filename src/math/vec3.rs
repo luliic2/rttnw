@@ -124,6 +124,11 @@ where
     pub fn at(&self, x: usize) -> Precision {
         self.items[x]
     }
+
+    pub fn near_zero(&self) -> bool {
+        let almost_zero = 1e-8;
+        self.x().abs() < almost_zero && self.y().abs() < almost_zero && self.z().abs() < almost_zero
+    }
 }
 
 impl<T: Phantom> Default for Vec3f<T> {

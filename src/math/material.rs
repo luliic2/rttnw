@@ -1,4 +1,4 @@
-use crate::math::{Color, HitRecord, Ray, Texture, Vec3f};
+use crate::math::{Color, HitRecord, Ray, Texture, Vec3f, Position};
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use std::sync::Arc;
@@ -6,6 +6,11 @@ use std::sync::Arc;
 /// Different materials scatter light differently
 pub trait Material: Send + Sync {
     fn scatter(&self, ray: Ray, record: HitRecord) -> Option<(Vec3f<Color>, Ray)>;
+
+    #[allow(unused_variables)]
+    fn emitted(&self, u: f64, v: f64, point: Vec3f<Position>) -> Vec3f<Color> {
+        Vec3f::repeat(0.)
+    }
 }
 
 /// Solid material
@@ -14,14 +19,13 @@ pub struct Lambertian {
     albedo: Arc<dyn Texture>,
 }
 
+#[allow(dead_code)]
 impl Lambertian {
-    #[allow(dead_code)]
     pub fn new<T: 'static + Texture>(albedo: T) -> Self {
         Self {
             albedo: Arc::new(albedo),
         }
     }
-    #[allow(dead_code)]
     pub fn from<T: 'static + Texture>(albedo: &Arc<T>) -> Self {
         Self {
             albedo: albedo.clone(),
@@ -32,14 +36,22 @@ impl Lambertian {
             albedo: Arc::new(albedo),
         })
     }
+    pub fn arc<T: 'static + Texture>(albedo: T) -> Arc<Self> {
+        Arc::new(Self {
+            albedo: Arc::new(albedo),
+        })
+    }
 }
 
 impl Material for Lambertian {
     fn scatter(&self, ray: Ray, record: HitRecord) -> Option<(Vec3f<Color>, Ray)> {
-        let target = record.p + record.normal + Vec3f::random_in_unit_space();
+        let scatter_direction = {
+            let direction = record.normal + Vec3f::random_in_unit_space();
+            if direction.near_zero() { record.normal } else { direction }
+        };
         let scattered = Ray {
             a: record.p,
-            b: target - record.p,
+            b: scatter_direction,
             time: ray.time,
         };
         let attenuation = self.albedo.value(record.u, record.v, record.p);
@@ -89,6 +101,7 @@ impl Material for Metal {
 }
 
 /// Glass material
+#[derive(Clone)]
 pub struct Dielectric {
     refraction_index: f64,
 }
@@ -148,5 +161,46 @@ impl Material for Dielectric {
                 time: ray.time,
             },
         ))
+    }
+}
+
+#[derive(Clone)]
+pub struct DiffuseLight {
+    emit: Arc<dyn Texture>,
+}
+
+impl DiffuseLight {
+    #[allow(dead_code)]
+    pub fn new<T: 'static + Texture>(albedo: T) -> Self {
+        Self {
+            emit: Arc::new(albedo),
+        }
+    }
+    #[allow(dead_code)]
+    pub fn from<T: 'static + Texture>(albedo: &Arc<T>) -> Self {
+        Self {
+            emit: albedo.clone(),
+        }
+    }
+    #[allow(dead_code)]
+    pub fn boxed<T: 'static + Texture>(albedo: T) -> Box<Self> {
+        Box::new(Self {
+            emit: Arc::new(albedo),
+        })
+    }
+    pub fn arc<T: 'static + Texture>(albedo: T) -> Arc<Self> {
+        Arc::new(Self {
+            emit: Arc::new(albedo),
+        })
+    }
+}
+
+impl Material for DiffuseLight {
+    fn scatter(&self, _: Ray, _: HitRecord) -> Option<(Vec3f<Color>, Ray)> {
+        None
+    }
+
+    fn emitted(&self, u: f64, v: f64, point: Vec3f<Position>) -> Vec3f<Color> {
+        self.emit.value(u, v, point)
     }
 }

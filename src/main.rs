@@ -6,6 +6,7 @@ use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterato
 mod math;
 mod scenes;
 
+use crate::math::Position;
 use math::{Camera, CameraDescriptor, Color, Hittable, List, Ray, Vec3f};
 use std::error::Error;
 
@@ -21,73 +22,120 @@ struct Rgba {
 }
 
 /// The resulting color of a ray pointing to a direction
-fn color(ray: Ray, world: &List, depth: i32) -> Vec3f<Color> {
+fn color(ray: Ray, background: Vec3f<Color>, world: &List, depth: i32) -> Vec3f<Color> {
+    // If the ray bounce limit is reached, no more light is gathered.
+    if depth <= 0 {
+        return Vec3f::repeat(0.);
+    }
     // If the ray hits something
     // `t_min` is not 0.0 to avoid the shadow acne problem
     if let Some(record) = world.hit(ray, 0.001, f64::MAX) {
+        let emitted = record.material.emitted(record.u, record.v, record.p);
+
         // New random point at a random direction. Where the ray is reflected.
-        return if depth >= 50 {
-            Vec3f::repeat(0.0)
-        } else if let Some((attenuation, scattered)) = record.material.scatter(ray, record) {
-            attenuation * color(scattered, world, depth + 1)
+        if let Some((attenuation, scattered)) = record.material.scatter(ray, record) {
+            emitted + attenuation * color(scattered, background, world, depth - 1)
         } else {
-            Vec3f::repeat(0.0)
-        };
+            emitted
+        }
+    } else {
+        background
     }
-    // Else return the horizont, blue -> white gradient
-    let direction = ray.direction().unit();
-    // Scale it between `0.0 < t < 1.0`
-    let t = (direction.y() + 1.0) * 0.5;
-    // (1.0 - t)*WHITE + t*BLUE
-    (1.0 - t) * Vec3f::repeat(1.0) + t * Vec3f::new(0.5, 0.7, 1.0)
+}
+
+#[derive(Default)]
+struct Scene {
+    background: Vec3f<Color>,
+    world: List,
+    lookfrom: Vec3f<Position>,
+    lookat: Vec3f<Position>,
+    vertical_fov: f64,
+    aperture: f64,
 }
 
 /// Saves the scene to a .png image of size `nx*ny`
-fn print_result(width: u32, aspect_ratio: f64, samples: usize, scene: usize) {
-    let height = (width as f64 / aspect_ratio) as u32;
-    let (world, lookfrom, lookat, vertical_fov, aperture) = match scene {
+fn render(mut width: u32, mut aspect_ratio: f64, mut samples: usize, scene: usize) {
+    let Scene {
+        background,
+        world,
+        lookfrom,
+        lookat,
+        vertical_fov,
+        aperture,
+    } = match scene {
         1 => {
             println!("Running scene random_scene");
-            (
-                scenes::random_scene(),
-                Vec3f::new(13.0, 2.0, 3.0),
-                Vec3f::repeat(0.0),
-                20.0,
-                0.1,
-            )
+            Scene {
+                background: Vec3f::new(0.7, 0.8, 1.),
+                world: scenes::random_scene(),
+                lookfrom: Vec3f::new(13.0, 2.0, 3.0),
+                lookat: Vec3f::repeat(0.0),
+                vertical_fov: 20.0,
+                aperture: 0.1,
+            }
         }
         2 => {
             println!("Running scene two_spheres");
-            (
-                scenes::two_spheres(),
-                Vec3f::new(13.0, 2.0, 3.0),
-                Vec3f::repeat(0.0),
-                20.0,
-                Default::default(),
-            )
+            Scene {
+                background: Vec3f::new(0.7, 0.8, 1.),
+                world: scenes::two_spheres(),
+                lookfrom: Vec3f::new(13.0, 2.0, 3.0),
+                lookat: Vec3f::repeat(0.0),
+                vertical_fov: 20.0,
+                ..Default::default()
+            }
         }
         3 => {
             println!("Running scene two_perlin_spheres");
-            (
-                scenes::two_perlin_spheres(),
-                Vec3f::new(13.0, 2.0, 3.0),
-                Vec3f::repeat(0.0),
-                20.0,
-                Default::default(),
-            )
+            Scene {
+                background: Vec3f::new(0.7, 0.8, 1.),
+                world: scenes::two_perlin_spheres(),
+                lookfrom: Vec3f::new(13.0, 2.0, 3.0),
+                lookat: Vec3f::repeat(0.0),
+                vertical_fov: 20.0,
+                ..Default::default()
+            }
         }
         4 => {
             println!("Running scene earth");
-            (
-                scenes::earth(),
-                Vec3f::new(13.0, 2.0, 3.0),
-                Vec3f::repeat(0.0),
-                20.0,
-                Default::default(),
-            )
+            Scene {
+                background: Vec3f::new(0.7, 0.8, 1.),
+                world: scenes::earth(),
+                lookfrom: Vec3f::new(13.0, 2.0, 3.0),
+                lookat: Vec3f::repeat(0.0),
+                vertical_fov: 20.0,
+                ..Default::default()
+            }
+        }
+        5 => {
+            println!("Running scene simple_light");
+            samples = 400;
+            Scene {
+                background: Vec3f::new(0.0, 0.0, 0.0),
+                world: scenes::simple_light(),
+                lookfrom: Vec3f::new(26.0, 3.0, 6.0),
+                lookat: Vec3f::new(0., 2., 0.),
+                vertical_fov: 20.,
+                ..Default::default()
+            }
+        }
+        6 => {
+            println!("Running scene cornell_box");
+            samples = 200;
+            aspect_ratio = 1.0;
+            width = 600;
+            Scene {
+                background: Vec3f::new(0.0, 0.0, 0.0),
+                world: scenes::cornell_box(),
+                lookfrom: Vec3f::new(278.0, 278.0, -800.0),
+                lookat: Vec3f::new(278., 278., 0.),
+                vertical_fov: 40.,
+                ..Default::default()
+            }
         }
         _ => panic!("Wrong scene"),
     };
+    let height = (width as f64 / aspect_ratio) as u32;
     let view_up = Vec3f::new(0.0, 1.0, 0.0);
     let focus_distance = 10.0;
     let camera = Camera::new(&CameraDescriptor {
@@ -128,7 +176,7 @@ fn print_result(width: u32, aspect_ratio: f64, samples: usize, scene: usize) {
                                 let u = (i as f64 + rng.gen::<f64>()) / width as f64;
                                 let v = (j as f64 + rng.gen::<f64>()) / height as f64;
                                 let ray = camera.ray(u, v);
-                                acc + color(ray, &world, 0)
+                                acc + color(ray, background, &world, 50)
                             },
                         )
                         .sum::<Vec3f<Color>>()
@@ -154,7 +202,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let scene = args.get(1).unwrap_or(&String::from("1")).parse()?;
     println!("Scene number: {}", scene);
     let instant = std::time::Instant::now();
-    print_result(400, 16.0 / 9.0, 100, scene);
+    render(400, 16.0 / 9.0, 100, scene);
     println!("{:?}", instant.elapsed());
     Ok(())
 }
