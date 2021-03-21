@@ -1,6 +1,5 @@
 use super::{Position, Vec3f};
-use rand::rngs::SmallRng;
-use rand::{Rng, SeedableRng};
+use rand::Rng;
 
 pub struct Perlin {
     random_points: Vec<Vec3f<Position>>,
@@ -11,16 +10,16 @@ pub struct Perlin {
 
 impl Perlin {
     const POINT_COUNT: usize = 256;
-    fn generate_permutation(rng: &mut SmallRng) -> Vec<usize> {
+    fn generate_permutation() -> Vec<usize> {
         let mut points: Vec<usize> = (0..Self::POINT_COUNT).collect();
 
-        Self::permute(&mut points, rng);
+        Self::permute(&mut points);
 
         points
     }
 
-    fn permute(points: &mut [usize], rng: &mut SmallRng) {
-        // let mut rng = SmallRng::from_entropy();
+    fn permute(points: &mut [usize]) {
+        let mut rng = rand::thread_rng();
         for i in (0..points.len()).rev() {
             let target = rng.gen_range(0..i + 1);
             points.swap(i, target);
@@ -28,13 +27,12 @@ impl Perlin {
     }
 
     pub fn new() -> Self {
-        let mut rng = SmallRng::from_entropy();
         let random_points = (0..Self::POINT_COUNT)
             .map(|_| Vec3f::random(-1.0..1.).unit())
             .collect();
-        let x = Self::generate_permutation(&mut rng);
-        let y = Self::generate_permutation(&mut rng);
-        let z = Self::generate_permutation(&mut rng);
+        let x = Self::generate_permutation();
+        let y = Self::generate_permutation();
+        let z = Self::generate_permutation();
 
         Self {
             random_points,

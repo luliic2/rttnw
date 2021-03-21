@@ -1,6 +1,5 @@
 use crate::math::{Color, HitRecord, Ray, Texture, Vec3f, Position};
-use rand::rngs::SmallRng;
-use rand::{Rng, SeedableRng};
+use rand::Rng;
 use std::sync::Arc;
 
 /// Different materials scatter light differently
@@ -124,7 +123,7 @@ impl Dielectric {
 
 impl Material for Dielectric {
     fn scatter(&self, ray: Ray, record: HitRecord) -> Option<(Vec3f<Color>, Ray)> {
-        let mut rng = SmallRng::from_entropy();
+        let mut rng = rand::thread_rng();
         let reflected = ray.direction().reflect(record.normal);
         // Attenuation is 1 because glass absorbs nothing
         // Kill the blue (z) channel

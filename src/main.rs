@@ -1,6 +1,5 @@
 use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
-use rand::rngs::SmallRng;
-use rand::{Rng, SeedableRng};
+use rand::Rng;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 mod math;
@@ -175,7 +174,7 @@ fn render(mut width: u32, mut aspect_ratio: f64, mut samples: usize, scene: usiz
                         .fold(
                             || Vec3f::<Color>::repeat(0.0),
                             |acc, _| {
-                                let mut rng = SmallRng::from_entropy();
+                                let mut rng = rand::thread_rng();
                                 let u = (i as f64 + rng.gen::<f64>()) / width as f64;
                                 let v = (j as f64 + rng.gen::<f64>()) / height as f64;
                                 let ray = camera.ray(u, v);

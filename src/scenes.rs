@@ -1,12 +1,11 @@
-use rand::rngs::SmallRng;
-use rand::{Rng, SeedableRng};
+use rand::Rng;
 
 use crate::math::{CheckerTexture, Dielectric, Lambertian, List, Metal, MovingSphere, NoiseTexture, Position, Sphere, Vec3f, ImageTexture, DiffuseLight, XYRectangle, YZRectangle, XZRectangle, Color};
 use std::sync::Arc;
 
 /// Generate the cover of the book
 pub fn random_scene() -> List {
-    let mut rng = SmallRng::from_entropy();
+    let mut rng = rand::thread_rng();
     let mut list = List::new();
     let checker = CheckerTexture {
         odd: Arc::new(Vec3f::new(0.2, 0.3, 0.1)),

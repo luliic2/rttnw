@@ -1,8 +1,7 @@
 #![allow(dead_code)]
 #![allow(clippy::many_single_char_names)]
 
-use rand::rngs::SmallRng;
-use rand::{Rng, SeedableRng};
+use rand::Rng;
 
 use std::cmp::Ordering;
 use std::sync::Arc;
@@ -234,7 +233,7 @@ impl BvhTree {
         initial_time: f64,
         final_time: f64,
     ) -> Self {
-        let mut rng = SmallRng::from_entropy();
+        let mut rng = rand::thread_rng();
         let axis = rng.gen_range(0..3);
         let comparator = match axis {
             0 => Self::x_comparator,

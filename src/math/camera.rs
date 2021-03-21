@@ -1,6 +1,5 @@
 use super::{Position, Ray, Vec3f};
-use rand::rngs::SmallRng;
-use rand::{Rng, SeedableRng};
+use rand::Rng;
 
 #[derive(Default)]
 pub struct CameraDescriptor {
@@ -62,7 +61,7 @@ impl Camera {
     }
     /// Generate a point around
     fn random_in_unit_disk() -> Vec3f<Position> {
-        let mut rng = SmallRng::from_entropy();
+        let mut rng = rand::thread_rng();
         loop {
             let p = 2.0 * Vec3f::new(rng.gen(), rng.gen(), 0.0) - Vec3f::new(1.0, 1.0, 0.0);
             if p.dot(p) < 1.0 {
@@ -72,7 +71,7 @@ impl Camera {
     }
     /// The resulting ray pointing from the camera to the (u, v) coordinates.
     pub fn ray(&self, s: f64, t: f64) -> Ray {
-        let mut rng = SmallRng::from_entropy();
+        let mut rng = rand::thread_rng();
         let rd = self.lens_radius * Self::random_in_unit_disk();
         let offset = self.u * rd.x() + self.v * rd.y();
         Ray {
