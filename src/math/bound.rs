@@ -23,8 +23,8 @@ impl Bound {
                 }
             };
             min = t0.max(min);
-            max = t1.max(max);
-            if max <= min {
+            max = t1.min(max);
+            if max < min {
                 return false;
             }
         }
@@ -38,9 +38,9 @@ impl Bound {
             self.min.z().min(other.min.z()),
         );
         let max = Vec3f::new(
-            self.max.x().min(other.max.x()),
-            self.max.y().min(other.max.y()),
-            self.max.z().min(other.max.z()),
+            self.max.x().max(other.max.x()),
+            self.max.y().max(other.max.y()),
+            self.max.z().max(other.max.z()),
         );
         Self { min, max }
     }

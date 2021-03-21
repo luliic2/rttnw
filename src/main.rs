@@ -7,7 +7,7 @@ mod math;
 mod scenes;
 
 use crate::math::Position;
-use math::{Camera, CameraDescriptor, Color, Hittable, List, Ray, Vec3f};
+use math::{Camera, CameraDescriptor, BvhTree, Color, Hittable, List, Ray, Vec3f};
 use std::error::Error;
 
 // use image::Rgba;
@@ -22,7 +22,7 @@ struct Rgba {
 }
 
 /// The resulting color of a ray pointing to a direction
-fn color(ray: Ray, background: Vec3f<Color>, world: &List, depth: i32) -> Vec3f<Color> {
+fn color<T: Hittable>(ray: Ray, background: Vec3f<Color>, world: &T, depth: i32) -> Vec3f<Color> {
     // If the ray bounce limit is reached, no more light is gathered.
     if depth <= 0 {
         return Vec3f::repeat(0.);
@@ -123,7 +123,8 @@ fn render(mut width: u32, mut aspect_ratio: f64, mut samples: usize, scene: usiz
             println!("Running scene cornell_box");
             samples = 200;
             aspect_ratio = 1.0;
-            width = 600;
+            // width = 600;
+            width = 300;
             Scene {
                 background: Vec3f::new(0.0, 0.0, 0.0),
                 world: scenes::cornell_box(),
@@ -149,6 +150,8 @@ fn render(mut width: u32, mut aspect_ratio: f64, mut samples: usize, scene: usiz
         open_time: 0.0,
         close_time: 1.0,
     });
+
+    let world = BvhTree::from(world, 0., 1.);
 
     let progress = ProgressBar::new(height as u64)
         .with_style(ProgressStyle::default_spinner().template("{pos}/{len} {spinner:.dim.bold}"));
