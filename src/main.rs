@@ -153,8 +153,7 @@ fn render(mut width: u32, mut aspect_ratio: f64, mut samples: usize, scene: usiz
     let progress = ProgressBar::new(height as u64)
         .with_style(ProgressStyle::default_spinner().template("{pos}/{len} {spinner:.dim.bold}"));
     // For each pixel
-    let image: Vec<Rgba> =
-        (0..height)
+    let image: Vec<Rgba> = (0..height)
         // .into_iter()
         .into_par_iter()
         .rev()
@@ -165,18 +164,13 @@ fn render(mut width: u32, mut aspect_ratio: f64, mut samples: usize, scene: usiz
                 .into_par_iter()
                 .map(|i| {
                     // Calculate the color `ns` times and average the result
-                    let col = (0..samples)
-                        .fold(
-                            Vec3f::<Color>::repeat(0.0),
-                            |acc, _| {
-                                let mut rng = rand::thread_rng();
-                                let u = (i as f64 + rng.gen::<f64>()) / width as f64;
-                                let v = (j as f64 + rng.gen::<f64>()) / height as f64;
-                                let ray = camera.ray(u, v);
-                                acc + color(ray, background, &world, 50)
-                            },
-                        )
-                        / samples as f64;
+                    let col = (0..samples).fold(Vec3f::<Color>::repeat(0.0), |acc, _| {
+                        let mut rng = rand::thread_rng();
+                        let u = (i as f64 + rng.gen::<f64>()) / width as f64;
+                        let v = (j as f64 + rng.gen::<f64>()) / height as f64;
+                        let ray = camera.ray(u, v);
+                        acc + color(ray, background, &world, 50)
+                    }) / samples as f64;
                     // Gamma correction
                     let col = col.map(|x| x.sqrt().clamp(0.0, 0.999) * 256.);
                     Rgba {

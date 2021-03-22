@@ -1,4 +1,5 @@
 use super::{Position, Vec3f};
+use rand::prelude::SliceRandom;
 use rand::Rng;
 
 pub struct Perlin {
@@ -10,14 +11,24 @@ pub struct Perlin {
 
 impl Perlin {
     const POINT_COUNT: usize = 256;
+
+    fn perlin_generate() -> Vec<Vec3f<Position>> {
+        (0..Self::POINT_COUNT)
+            .map(|_| Vec3f::random(-1. ..1.))
+            .collect()
+    }
+
     fn generate_permutation() -> Vec<usize> {
+        let mut rng = rand::thread_rng();
         let mut points: Vec<usize> = (0..Self::POINT_COUNT).collect();
 
-        Self::permute(&mut points);
+        points.shuffle(&mut rng);
+        // Self::permute(&mut points);
 
         points
     }
 
+    #[allow(dead_code)]
     fn permute(points: &mut [usize]) {
         let mut rng = rand::thread_rng();
         for i in (0..points.len()).rev() {
@@ -27,18 +38,11 @@ impl Perlin {
     }
 
     pub fn new() -> Self {
-        let random_points = (0..Self::POINT_COUNT)
-            .map(|_| Vec3f::random(-1.0..1.).unit())
-            .collect();
-        let x = Self::generate_permutation();
-        let y = Self::generate_permutation();
-        let z = Self::generate_permutation();
-
         Self {
-            random_points,
-            x,
-            y,
-            z,
+            random_points: Self::perlin_generate(),
+            x: Self::generate_permutation(),
+            y: Self::generate_permutation(),
+            z: Self::generate_permutation(),
         }
     }
 
@@ -47,16 +51,20 @@ impl Perlin {
         let u = point.x() - point.x().floor();
         let v = point.y() - point.y().floor();
         let w = point.z() - point.z().floor();
-        let i = point.x().floor() as usize;
-        let j = point.y().floor() as usize;
-        let k = point.z().floor() as usize;
+
+        // Ideally, i, j and k should be of type usize, making indexing simpler later.
+        // However, in the resulting noise appear strange artifacts
+        // (check `bad_images/perlin.png`) and I don't understand why.
+        let i = point.x().floor() as i32;
+        let j = point.y().floor() as i32;
+        let k = point.z().floor() as i32;
         let mut c = [[[Vec3f::default(); 2]; 2]; 2]; // Vec3f c[2][2][2];
         for (di, item) in c.iter_mut().enumerate() {
             for (dj, item) in item.iter_mut().enumerate() {
                 for (dk, item) in item.iter_mut().enumerate() {
-                    let x = self.x[(i + di) & 255];
-                    let y = self.y[(j + dj) & 255];
-                    let z = self.z[(k + dk) & 255];
+                    let x = self.x[((i + di as i32) & 255) as usize];
+                    let y = self.y[((j + dj as i32) & 255) as usize];
+                    let z = self.z[((k + dk as i32) & 255) as usize];
                     *item = self.random_points[x ^ y ^ z];
                 }
             }

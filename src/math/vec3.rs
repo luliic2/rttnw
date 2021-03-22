@@ -47,7 +47,11 @@ where
     }
     pub fn scaled(items: &[u8], scale: Precision) -> Self {
         assert!(items.len() >= 3);
-        Self::new(items[0] as Precision * scale, items[1] as Precision * scale, items[2] as Precision * scale)
+        Self::new(
+            items[0] as Precision * scale,
+            items[1] as Precision * scale,
+            items[2] as Precision * scale,
+        )
     }
     pub fn new(x: Precision, y: Precision, z: Precision) -> Self {
         Self {
@@ -105,7 +109,7 @@ where
 
     pub fn map<F>(self, f: F) -> Self
     where
-    F: Fn(Precision) -> Precision
+        F: Fn(Precision) -> Precision,
     {
         Self::new(f(self.x()), f(self.y()), f(self.z()))
     }

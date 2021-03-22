@@ -1,4 +1,4 @@
-use crate::math::{Color, HitRecord, Ray, Texture, Vec3f, Position};
+use crate::math::{Color, HitRecord, Position, Ray, Texture, Vec3f};
 use rand::Rng;
 use std::sync::Arc;
 
@@ -44,7 +44,7 @@ impl Lambertian {
 
 impl Material for Lambertian {
     fn scatter(&self, ray: Ray, record: HitRecord) -> Option<(Vec3f<Color>, Ray)> {
-        let target  = record.p + record.normal + Vec3f::random_in_unit_space();
+        let target = record.p + record.normal + Vec3f::random_in_unit_space();
         let scattered = Ray {
             a: record.p,
             b: target - record.p,

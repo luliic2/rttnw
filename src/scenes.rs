@@ -1,6 +1,9 @@
 use rand::Rng;
 
-use crate::math::{CheckerTexture, Dielectric, Lambertian, List, Metal, MovingSphere, NoiseTexture, Position, Sphere, Vec3f, ImageTexture, DiffuseLight, XYRectangle, YZRectangle, XZRectangle, Color};
+use crate::math::{
+    CheckerTexture, Color, Dielectric, DiffuseLight, ImageTexture, Lambertian, List, Metal,
+    MovingSphere, NoiseTexture, Position, Sphere, Vec3f, XYRectangle, XZRectangle, YZRectangle,
+};
 use std::sync::Arc;
 
 /// Generate the cover of the book
@@ -128,7 +131,7 @@ pub fn earth() -> List {
     world.push(Sphere {
         center: Vec3f::repeat(0.0),
         radius: 2.,
-        material: Box::new(Lambertian::new(earth))
+        material: Box::new(Lambertian::new(earth)),
     });
     world
 }
@@ -153,7 +156,7 @@ pub fn simple_light() -> List {
         x_max: 5.0,
         y_min: 1.0,
         y_max: 3.0,
-        k: -2.0
+        k: -2.0,
     });
 
     world
@@ -172,7 +175,7 @@ pub fn cornell_box() -> List {
         y_max: 555.,
         z_min: 0.0,
         z_max: 555.,
-        k: 555.
+        k: 555.,
     });
     world.push(YZRectangle {
         material: red,
@@ -180,7 +183,7 @@ pub fn cornell_box() -> List {
         y_max: 555.,
         z_min: 0.0,
         z_max: 555.,
-        k: 0.
+        k: 0.,
     });
     world.push(XZRectangle {
         material: light,
@@ -188,7 +191,7 @@ pub fn cornell_box() -> List {
         x_max: 343.,
         z_min: 227.0,
         z_max: 332.,
-        k: 554.
+        k: 554.,
     });
     world.push(XZRectangle {
         material: white.clone(),
@@ -196,7 +199,7 @@ pub fn cornell_box() -> List {
         x_max: 555.,
         z_min: 0.0,
         z_max: 555.,
-        k: 555.
+        k: 555.,
     });
     world.push(XZRectangle {
         material: white.clone(),
@@ -204,7 +207,7 @@ pub fn cornell_box() -> List {
         x_max: 555.,
         z_min: 0.0,
         z_max: 555.,
-        k: 0.
+        k: 0.,
     });
     world.push(XYRectangle {
         material: white,
@@ -212,7 +215,7 @@ pub fn cornell_box() -> List {
         x_max: 555.,
         y_min: 0.0,
         y_max: 555.,
-        k: 555.
+        k: 555.,
     });
 
     world

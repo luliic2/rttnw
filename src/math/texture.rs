@@ -60,6 +60,7 @@ impl Texture for NoiseTexture {
 
 use image::io::Reader;
 use image::RgbaImage;
+
 pub struct ImageTexture {
     data: Option<RgbaImage>,
 }
