@@ -55,6 +55,7 @@ impl Perlin {
         // Ideally, i, j and k should be of type usize, making indexing simpler later.
         // However, in the resulting noise appear strange artifacts
         // (check `bad_images/perlin.png`) and I don't understand why.
+        // Update: Because there can be negative coordinates, duh.
         let i = point.x().floor() as i32;
         let j = point.y().floor() as i32;
         let k = point.z().floor() as i32;
