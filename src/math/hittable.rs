@@ -411,7 +411,7 @@ impl Hittable for XZRectangle {
 
         let u = (x-self.x_min) / (self.x_max-self.x_min);
         let v = (z -self.z_min) / (self.z_max-self.z_min);
-        let outward_normal = Vec3f::new(0., 0., 1.);
+        let outward_normal = Vec3f::new(0., 1., 0.);
         let (normal, front_face) = HitRecord::face_normal(ray, outward_normal);
         let p = ray.point_at_parameter(t);
         Some(HitRecord {
@@ -460,7 +460,7 @@ impl Hittable for YZRectangle {
 
         let u = (y -self.y_min) / (self.y_max-self.y_min);
         let v = (z -self.z_min) / (self.z_max-self.z_min);
-        let outward_normal = Vec3f::new(0., 0., 1.);
+        let outward_normal = Vec3f::new(1., 0., 0.);
         let (normal, front_face) = HitRecord::face_normal(ray, outward_normal);
         let p = ray.point_at_parameter(t);
         Some(HitRecord {

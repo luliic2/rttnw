@@ -6,10 +6,9 @@ mod math;
 mod scenes;
 
 use crate::math::Position;
-use math::{Camera, CameraDescriptor, BvhTree, Color, Hittable, List, Ray, Vec3f};
+#[allow(unused_imports)]
+use math::{BvhTree, Camera, CameraDescriptor, Color, Hittable, List, Ray, Vec3f};
 use std::error::Error;
-
-// use image::Rgba;
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
@@ -122,8 +121,7 @@ fn render(mut width: u32, mut aspect_ratio: f64, mut samples: usize, scene: usiz
             println!("Running scene cornell_box");
             samples = 200;
             aspect_ratio = 1.0;
-            // width = 600;
-            width = 300;
+            width = 600;
             Scene {
                 background: Vec3f::new(0.0, 0.0, 0.0),
                 world: scenes::cornell_box(),
@@ -150,29 +148,26 @@ fn render(mut width: u32, mut aspect_ratio: f64, mut samples: usize, scene: usiz
         close_time: 1.0,
     });
 
-    let world = BvhTree::from(world, 0., 1.);
+    // let world = BvhTree::from(world, 0., 1.);
 
     let progress = ProgressBar::new(height as u64)
         .with_style(ProgressStyle::default_spinner().template("{pos}/{len} {spinner:.dim.bold}"));
     // For each pixel
-    // let image: Vec<u8> =
-    let image: Vec<Rgba> = /*Vec::with_capacity(4 * width * height);*/
+    let image: Vec<Rgba> =
         (0..height)
         // .into_iter()
         .into_par_iter()
         .rev()
         // .progress()
         .progress_with(progress)
-        // .progress_count(height as u64)
         .flat_map(|j| {
             (0..width)
                 .into_par_iter()
                 .map(|i| {
                     // Calculate the color `ns` times and average the result
                     let col = (0..samples)
-                        .into_par_iter()
                         .fold(
-                            || Vec3f::<Color>::repeat(0.0),
+                            Vec3f::<Color>::repeat(0.0),
                             |acc, _| {
                                 let mut rng = rand::thread_rng();
                                 let u = (i as f64 + rng.gen::<f64>()) / width as f64;
@@ -181,10 +176,9 @@ fn render(mut width: u32, mut aspect_ratio: f64, mut samples: usize, scene: usiz
                                 acc + color(ray, background, &world, 50)
                             },
                         )
-                        .sum::<Vec3f<Color>>()
                         / samples as f64;
                     // Gamma correction
-                    let col = col.map(|x| x.sqrt() * 255.99);
+                    let col = col.map(|x| x.sqrt().clamp(0.0, 0.999) * 256.);
                     Rgba {
                         r: col.x() as u8,
                         g: col.y() as u8,

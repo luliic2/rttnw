@@ -44,13 +44,10 @@ impl Lambertian {
 
 impl Material for Lambertian {
     fn scatter(&self, ray: Ray, record: HitRecord) -> Option<(Vec3f<Color>, Ray)> {
-        let scatter_direction = {
-            let direction = record.normal + Vec3f::random_in_unit_space();
-            if direction.near_zero() { record.normal } else { direction }
-        };
+        let target  = record.p + record.normal + Vec3f::random_in_unit_space();
         let scattered = Ray {
             a: record.p,
-            b: scatter_direction,
+            b: target - record.p,
             time: ray.time,
         };
         let attenuation = self.albedo.value(record.u, record.v, record.p);

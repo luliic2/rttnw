@@ -103,7 +103,10 @@ where
         Self::new(x, x, x)
     }
 
-    pub fn map(self, f: fn(Precision) -> Precision) -> Self {
+    pub fn map<F>(self, f: F) -> Self
+    where
+    F: Fn(Precision) -> Precision
+    {
         Self::new(f(self.x()), f(self.y()), f(self.z()))
     }
     pub fn reflect(&self, n: Vec3f<T>) -> Vec3f<T> {
