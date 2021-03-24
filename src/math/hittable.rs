@@ -8,7 +8,8 @@ use std::marker::PhantomData;
 use std::ops::Range;
 use std::sync::Arc;
 
-use super::{Bound, Coordinate, Material, Position, Ray, Vec3f};
+use super::{Bound, Coordinate, Material, Position, Ray, Vec3f, Isotropic};
+use crate::math::Texture;
 
 /// The result after a ray hits an object.
 #[derive(Clone, Copy)]
@@ -47,10 +48,19 @@ impl HitRecord<'_> {
 pub trait Hittable: Send + Sync {
     fn hit(&self, ray: Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
     fn bounding_box(&self, initial_time: f64, final_time: f64) -> Option<Bound>;
-    fn translate(self, offset: Vec3f<Position>) -> Translate where Self: 'static + Sized {
-        Translate { item: Box::new(self), offset }
+    fn translate(self, offset: Vec3f<Position>) -> Translate
+    where
+        Self: 'static + Sized,
+    {
+        Translate {
+            item: Box::new(self),
+            offset,
+        }
     }
-    fn rotate_y(self, angle: f64) -> YRotate where Self: 'static + Sized {
+    fn rotate_y(self, angle: f64) -> YRotate
+    where
+        Self: 'static + Sized,
+    {
         YRotate::new(Box::new(self), angle)
     }
 }
@@ -677,12 +687,12 @@ impl Hittable for YRotate {
         let mut direction = ray.direction();
         origin[0] = self.cos_theta * ray.origin()[0] - self.sin_theta * ray.origin()[2];
         origin[2] = self.sin_theta * ray.origin()[0] + self.cos_theta * ray.origin()[2];
-        direction[0] =
-            self.cos_theta * ray.direction()[0] - self.sin_theta * ray.direction()[2];
-        direction[2] =
-            self.sin_theta * ray.direction()[0] + self.cos_theta * ray.direction()[2];
+        direction[0] = self.cos_theta * ray.direction()[0] - self.sin_theta * ray.direction()[2];
+        direction[2] = self.sin_theta * ray.direction()[0] + self.cos_theta * ray.direction()[2];
         let ray = Ray {
-            a: origin, b: direction, time: ray.time,
+            a: origin,
+            b: direction,
+            time: ray.time,
         };
 
         if let Some(mut record) = self.item.hit(ray, t_min, t_max) {
@@ -707,5 +717,84 @@ impl Hittable for YRotate {
     #[allow(unused_variables)]
     fn bounding_box(&self, initial_time: f64, final_time: f64) -> Option<Bound> {
         Some(self.bound)
+    }
+}
+
+pub struct ConstantMedium {
+    boundary: Arc<dyn Hittable>,
+    phase_function: Isotropic,
+    neg_inv_density: f64,
+}
+
+impl ConstantMedium {
+    pub fn new(boundary: Arc<dyn Hittable>, density: f64, phase_function: Arc<dyn Texture>) -> Self {
+        Self {
+            boundary, phase_function: Isotropic { albedo: phase_function }, neg_inv_density: -1./density
+        }
+    }
+}
+
+impl Hittable for ConstantMedium {
+    // Current implementation assumes the shape is convex
+    fn hit(&self, ray: Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let mut rng = rand::thread_rng();
+        // Print occasional samples when debugging. To enable, set enableDebug true.
+        let _enable_debug = false;
+        let debugging = _enable_debug && rng.gen::<f64>() < 0.00001;
+        if let Some(mut record1) =
+            self.boundary
+                .hit(ray, std::f64::NEG_INFINITY, std::f64::INFINITY)
+        {
+            if let Some(mut record2) =
+                self.boundary
+                    .hit(ray, record1.t + 0.0001, std::f64::INFINITY)
+            {
+                if debugging {
+                    eprintln!("\nt_min = {}, t_max = {}", record1.t, record2.t);
+                }
+                record1.t = record1.t.max(t_min);
+                record2.t = record2.t.min(t_max);
+                if record1.t >= record2.t {
+                    return None;
+                }
+                record1.t = record1.t.max(0.);
+
+                let ray_length = ray.direction().magnitude();
+                let distance_inside_boundary = (record2.t - record1.t) * ray_length;
+                let hit_distance = self.neg_inv_density * rng.gen::<f64>().ln();
+
+                if hit_distance > distance_inside_boundary {
+                    return None;
+                }
+                let t = record1.t + hit_distance / ray_length;
+                let p = ray.point_at_parameter(t);
+                if debugging {
+                    eprintln!(
+                        "hit_distance = {}\nrec.t = {}\nrec.p {}",
+                        hit_distance, t, p
+                    );
+                }
+                let normal = Vec3f::new(1., 0., 0.); // Arbitrary
+                let front_face = true; // Arbitrary
+
+                Some(HitRecord {
+                    t,
+                    p,
+                    normal,
+                    front_face,
+                    material: &self.phase_function,
+                    u: 0.0,
+                    v: 0.0,
+                })
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    fn bounding_box(&self, initial_time: f64, final_time: f64) -> Option<Bound> {
+        self.boundary.bounding_box(initial_time, final_time)
     }
 }

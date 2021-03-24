@@ -139,10 +139,23 @@ fn render(mut width: u32, mut aspect_ratio: f64, mut samples: usize, scene: usiz
             samples = 200;
             aspect_ratio = 1.0;
             width = 600;
-            // width = 300;
             Scene {
                 background: Vec3f::new(0.0, 0.0, 0.0),
                 world: scenes::cornell_box(),
+                lookfrom: Vec3f::new(278.0, 278.0, -800.0),
+                lookat: Vec3f::new(278., 278., 0.),
+                vertical_fov: 40.,
+                ..Default::default()
+            }
+        }
+        8 => {
+            println!("Running scene smoke_cornell_box");
+            samples = 200;
+            aspect_ratio = 1.0;
+            width = 600;
+            Scene {
+                background: Vec3f::new(0.0, 0.0, 0.0),
+                world: scenes::smoke_cornell_box(),
                 lookfrom: Vec3f::new(278.0, 278.0, -800.0),
                 lookat: Vec3f::new(278., 278., 0.),
                 vertical_fov: 40.,

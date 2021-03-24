@@ -10,9 +10,9 @@ pub mod vec3;
 pub use bound::Bound;
 pub use camera::{Camera, CameraDescriptor};
 pub use hittable::{
-    BvhTree, HitRecord, Hittable, List, MovingSphere, Rectangle, Sphere, XY, XZ, YZ, Plane, Cube, Translate
+    BvhTree, HitRecord, Hittable, List, MovingSphere, Rectangle, Sphere, XY, XZ, YZ, Plane, Cube, Translate, ConstantMedium
 };
-pub use material::{Dielectric, DiffuseLight, Lambertian, Material, Metal};
+pub use material::{Dielectric, DiffuseLight, Lambertian, Material, Metal, Isotropic};
 pub use noise::Perlin;
 pub use ray::Ray;
 pub use texture::{CheckerTexture, ImageTexture, NoiseTexture, Texture};
