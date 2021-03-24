@@ -1,8 +1,8 @@
 use rand::Rng;
 
 use crate::math::{
-    CheckerTexture, Color,  Dielectric, DiffuseLight, ImageTexture, Lambertian, List, Metal,
-    MovingSphere, NoiseTexture, Position, Sphere, Vec3f, XY, XZ, YZ, Plane
+    CheckerTexture, Color, Cube, Dielectric, DiffuseLight, Hittable, ImageTexture, Lambertian,
+    List, Metal, MovingSphere, NoiseTexture, Plane, Position, Sphere, Vec3f, XY, XZ, YZ,
 };
 use std::sync::Arc;
 
@@ -153,19 +153,50 @@ pub fn simple_light() -> List {
     world
 }
 
-pub fn cornell_box() -> List {
+pub fn empty_cornell_box() -> List {
     let mut world = List::new();
 
     let red = Lambertian::arc(Vec3f::new(0.65, 0.05, 0.05));
     let white = Lambertian::arc(Vec3f::repeat(0.73));
     let green = Lambertian::arc(Vec3f::new(0.12, 0.45, 0.15));
+    // let red = Lambertian::arc(Vec3f::new(0.65, 0.05, 0.05));
+    // let white = Lambertian::arc(Vec3f::repeat(0.73));
+    // let green = D::arc(Vec3f::repeat(0.73));
     let light = DiffuseLight::arc(Vec3f::<Color>::repeat(15.));
+
     world.push(YZ::rectangle(green, 0. ..555., 0. ..555., 555.));
     world.push(YZ::rectangle(red, 0. ..555., 0. ..555., 0.));
     world.push(XZ::rectangle(light, 213. ..343., 227. ..332., 554.));
     world.push(XZ::rectangle(white.clone(), 0. ..555., 0.0..555., 555.));
     world.push(XZ::rectangle(white.clone(), 0. ..555., 0. ..555., 0.));
     world.push(XY::rectangle(white, 0. ..555., 0. ..555., 555.));
+
+    world
+}
+
+pub fn cornell_box() -> List {
+    let mut world = empty_cornell_box();
+
+    let white = Lambertian::arc(Vec3f::repeat(0.73));
+
+    world.push(
+        Cube::new(
+            Vec3f::new(0., 0., 0.),
+            Vec3f::new(165., 330., 165.),
+            white.clone(),
+        )
+        .rotate_y(15.)
+        .translate(Vec3f::new(265., 0., 295.)),
+    );
+    world.push(
+        Cube::new(
+            Vec3f::new(0., 0., 0.),
+            Vec3f::repeat(165.),
+            white,
+        )
+        .rotate_y(-18.)
+        .translate(Vec3f::new(130., 0., 65.)),
+    );
 
     world
 }

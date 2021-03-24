@@ -11,7 +11,7 @@ impl Bound {
     /// Andrew Kensler's version of the hit detection.
     /// http://psgraphics.blogspot.com/2016/02/new-simple-ray-box-test-from-andrew.html
     pub fn hit(&self, ray: Ray, mut min: f64, mut max: f64) -> bool {
-        for dimension in 0..3_usize {
+        for dimension in 0..3 {
             let inverse_direction = 1.0 / ray.direction().at(dimension);
             let (t0, t1) = {
                 let t0 = (self.min.at(dimension) - ray.origin().at(dimension)) * inverse_direction;

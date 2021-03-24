@@ -1,3 +1,6 @@
+//! Raytracing: The Next Week implementation in Rust.
+//! Original book by Peter Shirley [here](https://raytracing.github.io/books/RayTracingTheNextWeek.html)
+
 use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
 use rand::Rng;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
@@ -136,6 +139,7 @@ fn render(mut width: u32, mut aspect_ratio: f64, mut samples: usize, scene: usiz
             samples = 200;
             aspect_ratio = 1.0;
             width = 600;
+            // width = 300;
             Scene {
                 background: Vec3f::new(0.0, 0.0, 0.0),
                 world: scenes::cornell_box(),

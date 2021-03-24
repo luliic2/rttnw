@@ -47,6 +47,12 @@ impl HitRecord<'_> {
 pub trait Hittable: Send + Sync {
     fn hit(&self, ray: Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
     fn bounding_box(&self, initial_time: f64, final_time: f64) -> Option<Bound>;
+    fn translate(self, offset: Vec3f<Position>) -> Translate where Self: 'static + Sized {
+        Translate { item: Box::new(self), offset }
+    }
+    fn rotate_y(self, angle: f64) -> YRotate where Self: 'static + Sized {
+        YRotate::new(Box::new(self), angle)
+    }
 }
 
 /// A sphere that can be hit by a ray.
@@ -418,7 +424,7 @@ pub struct Rectangle<M: Material, P: Plane> {
     pub material: Arc<M>,
     pub p0: Range<f64>,
     pub p1: Range<f64>,
-    // Must be non-zero, or else problem appear when creating the bounding box in the BVH.
+    // Must be non-zero, or else problems appear when creating the bounding box in the BVH.
     pub k: f64,
     _phantom: PhantomData<P>,
 }
@@ -436,7 +442,11 @@ impl Plane for XY {
     }
 
     fn axes() -> PlaneCoordinates {
-        PlaneCoordinates { axis0: Coordinate::X, axis1: Coordinate::Y, k: Coordinate::Z }
+        PlaneCoordinates {
+            axis0: Coordinate::X,
+            axis1: Coordinate::Y,
+            k: Coordinate::Z,
+        }
     }
 }
 impl Plane for XZ {
@@ -445,7 +455,11 @@ impl Plane for XZ {
     }
 
     fn axes() -> PlaneCoordinates {
-        PlaneCoordinates { axis0: Coordinate::X, axis1: Coordinate::Z, k: Coordinate::Y }
+        PlaneCoordinates {
+            axis0: Coordinate::X,
+            axis1: Coordinate::Z,
+            k: Coordinate::Y,
+        }
     }
 }
 impl Plane for YZ {
@@ -454,7 +468,11 @@ impl Plane for YZ {
     }
 
     fn axes() -> PlaneCoordinates {
-        PlaneCoordinates { axis0: Coordinate::Y, axis1: Coordinate::Z, k: Coordinate::X }
+        PlaneCoordinates {
+            axis0: Coordinate::Y,
+            axis1: Coordinate::Z,
+            k: Coordinate::X,
+        }
     }
 }
 
@@ -472,7 +490,7 @@ impl<M: Material, P: Plane> Rectangle<M, P> {
 
 impl<M: Material, P: Plane> Hittable for Rectangle<M, P> {
     fn hit(&self, ray: Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
-        let PlaneCoordinates { axis0,  axis1, k } = P::axes();
+        let PlaneCoordinates { axis0, axis1, k } = P::axes();
         let t = (self.k - ray.origin().at(k)) / ray.direction().at(k);
         if t < t_min || t > t_max {
             return None;
@@ -501,7 +519,7 @@ impl<M: Material, P: Plane> Hittable for Rectangle<M, P> {
 
     #[allow(unused_variables)]
     fn bounding_box(&self, initial_time: f64, final_time: f64) -> Option<Bound> {
-        let PlaneCoordinates { axis0,  axis1, k } = P::axes();
+        let PlaneCoordinates { axis0, axis1, k } = P::axes();
         let bound = Bound {
             min: Vec3f::default()
                 .with_dimension(axis0, self.p0.start)
@@ -514,5 +532,180 @@ impl<M: Material, P: Plane> Hittable for Rectangle<M, P> {
                 .with_dimension(k, self.k + 0.0001),
         };
         Some(bound)
+    }
+}
+
+pub struct Cube {
+    box_min: Vec3f<Position>,
+    box_max: Vec3f<Position>,
+    sides: List,
+}
+
+impl Cube {
+    pub fn new<T>(box_min: Vec3f<Position>, box_max: Vec3f<Position>, material: Arc<T>) -> Self
+    where
+        T: 'static + Material,
+    {
+        let mut sides = List::with_capacity(6);
+        let xy = XY::rectangles(box_min, box_max, &material);
+        sides.push(xy.0);
+        sides.push(xy.1);
+        let xz = XZ::rectangles(box_min, box_max, &material);
+        sides.push(xz.0);
+        sides.push(xz.1);
+        let yz = YZ::rectangles(box_min, box_max, &material);
+        sides.push(yz.0);
+        sides.push(yz.1);
+
+        Self {
+            box_min,
+            box_max,
+            sides,
+        }
+    }
+}
+
+impl Hittable for Cube {
+    fn hit(&self, ray: Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        self.sides.hit(ray, t_min, t_max)
+    }
+
+    #[allow(unused_variables)]
+    fn bounding_box(&self, initial_time: f64, final_time: f64) -> Option<Bound> {
+        let bound = Bound {
+            min: self.box_min,
+            max: self.box_max,
+        };
+        Some(bound)
+    }
+}
+
+pub struct Translate {
+    pub item: Box<dyn Hittable>,
+    pub offset: Vec3f<Position>,
+}
+impl Hittable for Translate {
+    fn hit(&self, ray: Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let moved_ray = Ray {
+            a: ray.origin() - self.offset,
+            b: ray.direction(),
+            time: ray.time,
+        };
+
+        if let Some(record) = self.item.hit(moved_ray, t_min, t_max) {
+            let (normal, front_face) = HitRecord::face_normal(moved_ray, record.normal);
+            Some(HitRecord {
+                normal,
+                front_face,
+                p: record.p + self.offset,
+                ..record
+            })
+        } else {
+            None
+        }
+    }
+
+    fn bounding_box(&self, initial_time: f64, final_time: f64) -> Option<Bound> {
+        if let Some(bound) = self.item.bounding_box(initial_time, final_time) {
+            Some(Bound {
+                min: bound.min + self.offset,
+                max: bound.max + self.offset,
+            })
+        } else {
+            None
+        }
+    }
+}
+
+pub struct YRotate {
+    item: Box<dyn Hittable>,
+    sin_theta: f64,
+    cos_theta: f64,
+    has_bound: bool,
+    bound: Bound,
+}
+
+impl YRotate {
+    pub fn new(item: Box<dyn Hittable>, angle: f64) -> Self {
+        let radians = angle.to_radians();
+        let sin_theta = radians.sin();
+        let cos_theta = radians.cos();
+
+        let (bound, has_bound) = if let Some(bound) = item.bounding_box(0., 1.) {
+            (bound, true)
+        } else {
+            (Default::default(), false)
+        };
+
+        let mut min = Vec3f::repeat(std::f64::INFINITY);
+        let mut max = Vec3f::repeat(std::f64::NEG_INFINITY);
+
+        for i in 0..2 {
+            for j in 0..2 {
+                for k in 0..2 {
+                    let x = i as f64 * bound.max.x() + (1 - i) as f64 * bound.min.x();
+                    let y = j as f64 * bound.max.y() + (1 - j) as f64 * bound.min.y();
+                    let z = k as f64 * bound.max.z() + (1 - k) as f64 * bound.min.z();
+
+                    let x = cos_theta * x + sin_theta * z;
+                    let z = -sin_theta * x + cos_theta * z;
+
+                    let tmp = Vec3f::<Position>::new(x, y, z);
+
+                    for coord in 0..3 {
+                        min[coord] = min[coord].min(tmp[coord]);
+                        max[coord] = max[coord].max(tmp[coord]);
+                    }
+                }
+            }
+        }
+
+        let bound = Bound { min, max };
+        Self {
+            bound,
+            has_bound,
+            item,
+            sin_theta,
+            cos_theta,
+        }
+    }
+}
+
+impl Hittable for YRotate {
+    fn hit(&self, ray: Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let mut origin = ray.origin();
+        let mut direction = ray.direction();
+        origin[0] = self.cos_theta * ray.origin()[0] - self.sin_theta * ray.origin()[2];
+        origin[2] = self.sin_theta * ray.origin()[0] + self.cos_theta * ray.origin()[2];
+        direction[0] =
+            self.cos_theta * ray.direction()[0] - self.sin_theta * ray.direction()[2];
+        direction[2] =
+            self.sin_theta * ray.direction()[0] + self.cos_theta * ray.direction()[2];
+        let ray = Ray {
+            a: origin, b: direction, time: ray.time,
+        };
+
+        if let Some(mut record) = self.item.hit(ray, t_min, t_max) {
+            record.p[0] = self.cos_theta * record.p[0] + self.sin_theta * record.p[2];
+            record.p[2] = -self.sin_theta * record.p[0] + self.cos_theta * record.p[2];
+            record.normal[0] =
+                self.cos_theta * record.normal[0] + self.sin_theta * record.normal[2];
+            record.normal[2] =
+                -self.sin_theta * record.normal[0] + self.cos_theta * record.normal[2];
+            let (normal, front_face) = HitRecord::face_normal(ray, record.normal);
+
+            Some(HitRecord {
+                normal,
+                front_face,
+                ..record
+            })
+        } else {
+            None
+        }
+    }
+
+    #[allow(unused_variables)]
+    fn bounding_box(&self, initial_time: f64, final_time: f64) -> Option<Bound> {
+        Some(self.bound)
     }
 }

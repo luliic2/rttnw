@@ -125,7 +125,7 @@ where
     }
     pub fn at<C>(&self, x: C) -> Precision
     where
-        C: Into<usize>,
+        C: Index,
     {
         self.items[x.into()]
     }
@@ -262,6 +262,35 @@ impl<T: Phantom> std::ops::Neg for Vec3f<T> {
 impl<T: Phantom> std::iter::Sum for Vec3f<T> {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
         iter.fold(Self::repeat(0.0), std::ops::Add::add)
+    }
+}
+
+/// Trait for items that can index `Vec3f`.
+/// Poor man `std::slice::SliceIndex` because its unsafe & unstable.
+pub trait Index: Into<usize> {}
+impl Index for usize {}
+impl Index for Coordinate {}
+
+// Before the trait bound was `where C: Into<usize>`,
+// but then the compiler asked for implicit type for integers.
+// What happened is:
+// ```
+// let v = Vec3f::default();
+// v[0]; // Compiler error: i32 does not implemented Into<usize>
+// v[0_usize]; // Forced to do this
+// ...
+// ```
+impl<T: Phantom, C> std::ops::Index<C> for Vec3f<T> where C: Index {
+    type Output = Precision;
+
+    fn index(&self, index: C) -> &Self::Output {
+        &self.items[index.into()]
+    }
+}
+
+impl<T: Phantom, C> std::ops::IndexMut<C> for Vec3f<T> where C: Index {
+    fn index_mut(&mut self, index: C) -> &mut Self::Output {
+        &mut self.items[index.into()]
     }
 }
 

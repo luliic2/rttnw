@@ -144,6 +144,11 @@ impl Dielectric {
         Self { refraction_index }
     }
 
+    #[allow(dead_code)]
+    pub fn arc(refraction_index: f64) -> Arc<Self> {
+        Arc::new(Self { refraction_index })
+    }
+
     pub fn boxed(refraction_index: f64) -> Box<Self> {
         Box::new(Self { refraction_index })
     }
