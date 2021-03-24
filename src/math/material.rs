@@ -13,36 +13,72 @@ pub trait Material: Send + Sync {
 }
 
 /// Solid material
-// #[derive(Copy, Clone)]
-pub struct Lambertian {
-    albedo: Arc<dyn Texture>,
+#[derive(Clone)]
+pub struct Lambertian<T: Texture> {
+    albedo: Arc<T>,
+}
+
+impl<T> From<T> for Lambertian<T>
+where
+    T: 'static + Texture,
+{
+    fn from(albedo: T) -> Self {
+        Self {
+            albedo: Arc::new(albedo),
+        }
+    }
 }
 
 #[allow(dead_code)]
-impl Lambertian {
-    pub fn new<T: 'static + Texture>(albedo: T) -> Self {
-        Self {
-            albedo: Arc::new(albedo),
-        }
+impl<T: Texture> Lambertian<T> {
+    pub fn new<A>(albedo: A) -> Self
+    where
+        T: 'static,
+        A: Into<Arc<T>>,
+    {
+        let albedo = albedo.into();
+        Self { albedo }
     }
-    pub fn from<T: 'static + Texture>(albedo: &Arc<T>) -> Self {
-        Self {
-            albedo: albedo.clone(),
-        }
+    /// Create a Lambertian wrapped in a box
+    /// TODO: Is there a way to help the compiler infer the type T? Example:
+    /// ```
+    /// pub fn two_spheres() -> List {
+    ///     let mut world = List::new();
+    ///     let checker = Arc::new(CheckerTexture {
+    ///         odd: Arc::new(Vec3f::new(0.2, 0.3, 0.1)),
+    ///         even: Arc::new(Vec3f::new(0.9, 0.9, 0.9)),
+    ///     });
+    ///     world.push(Sphere {
+    ///         center: Vec3f::new(0.0, -10.0, 0.0),
+    ///         radius: 10.0,
+    ///         material: Lambertian::<CheckerTexture>::boxed(checker.clone()),
+    ///     });
+    ///     world.push(Sphere {
+    ///         center: Vec3f::new(0.0, 10.0, 0.0),
+    ///         radius: 10.0,
+    ///         material: Lambertian::<CheckerTexture>::boxed(checker),
+    ///     });
+    ///
+    ///     world
+    /// }
+    /// ```
+    pub fn boxed<A>(albedo: A) -> Box<Self>
+    where
+        T: 'static,
+        A: Into<Arc<T>>,
+    {
+        Box::new(Self::new(albedo))
     }
-    pub fn boxed<T: 'static + Texture>(albedo: T) -> Box<Self> {
-        Box::new(Self {
-            albedo: Arc::new(albedo),
-        })
-    }
-    pub fn arc<T: 'static + Texture>(albedo: T) -> Arc<Self> {
-        Arc::new(Self {
-            albedo: Arc::new(albedo),
-        })
+    pub fn arc<A>(albedo: A) -> Arc<Self>
+    where
+        T: 'static,
+        A: Into<Arc<T>>,
+    {
+        Arc::new(Self::new(albedo))
     }
 }
 
-impl Material for Lambertian {
+impl<T: Texture> Material for Lambertian<T> {
     fn scatter(&self, ray: Ray, record: HitRecord) -> Option<(Vec3f<Color>, Ray)> {
         let target = record.p + record.normal + Vec3f::random_in_unit_space();
         let scattered = Ray {
@@ -97,7 +133,7 @@ impl Material for Metal {
 }
 
 /// Glass material
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub struct Dielectric {
     refraction_index: f64,
 }
@@ -123,7 +159,6 @@ impl Material for Dielectric {
         let mut rng = rand::thread_rng();
         let reflected = ray.direction().reflect(record.normal);
         // Attenuation is 1 because glass absorbs nothing
-        // Kill the blue (z) channel
         let attenuation = Vec3f::new(1.0, 1.0, 1.0);
         let (outward_normal, ni_over_nt, cosine) = if ray.direction().dot(record.normal) > 0.0 {
             (
@@ -165,15 +200,20 @@ pub struct DiffuseLight {
     emit: Arc<dyn Texture>,
 }
 
-impl DiffuseLight {
-    #[allow(dead_code)]
-    pub fn new<T: 'static + Texture>(albedo: T) -> Self {
+impl<T> From<T> for DiffuseLight
+where
+    T: 'static + Texture,
+{
+    fn from(albedo: T) -> Self {
         Self {
             emit: Arc::new(albedo),
         }
     }
+}
+
+impl DiffuseLight {
     #[allow(dead_code)]
-    pub fn from<T: 'static + Texture>(albedo: &Arc<T>) -> Self {
+    pub fn new<T: 'static + Texture>(albedo: &Arc<T>) -> Self {
         Self {
             emit: albedo.clone(),
         }

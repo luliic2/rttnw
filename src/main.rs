@@ -118,6 +118,20 @@ fn render(mut width: u32, mut aspect_ratio: f64, mut samples: usize, scene: usiz
             }
         }
         6 => {
+            println!("Running scene empty_cornell_box");
+            samples = 200;
+            aspect_ratio = 1.0;
+            width = 600;
+            Scene {
+                background: Vec3f::new(0.0, 0.0, 0.0),
+                world: scenes::empty_cornell_box(),
+                lookfrom: Vec3f::new(278.0, 278.0, -800.0),
+                lookat: Vec3f::new(278., 278., 0.),
+                vertical_fov: 40.,
+                ..Default::default()
+            }
+        }
+        7 => {
             println!("Running scene cornell_box");
             samples = 200;
             aspect_ratio = 1.0;

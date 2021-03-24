@@ -1,8 +1,8 @@
 use rand::Rng;
 
 use crate::math::{
-    CheckerTexture, Color, Dielectric, DiffuseLight, ImageTexture, Lambertian, List, Metal,
-    MovingSphere, NoiseTexture, Position, Sphere, Vec3f, XYRectangle, XZRectangle, YZRectangle,
+    CheckerTexture, Color,  Dielectric, DiffuseLight, ImageTexture, Lambertian, List, Metal,
+    MovingSphere, NoiseTexture, Position, Sphere, Vec3f, XY, XZ, YZ, Plane
 };
 use std::sync::Arc;
 
@@ -32,10 +32,8 @@ pub fn random_scene() -> List {
                     let final_center = center + Vec3f::new(0.0, rng.gen_range(0.0..0.5), 0.0);
                     // diffuse
                     list.push(MovingSphere {
-                        initial_center: center,
-                        final_center,
-                        initial_time: 0.0,
-                        final_time: 1.0,
+                        center: center..final_center,
+                        time: 0. ..1.,
                         radius: 0.2,
                         material: Lambertian::boxed(Vec3f::new(
                             rng.gen::<f64>() * rng.gen::<f64>(),
@@ -97,12 +95,12 @@ pub fn two_spheres() -> List {
     world.push(Sphere {
         center: Vec3f::new(0.0, -10.0, 0.0),
         radius: 10.0,
-        material: Box::new(Lambertian::from(&checker)),
+        material: Lambertian::<CheckerTexture>::boxed(checker.clone()),
     });
     world.push(Sphere {
         center: Vec3f::new(0.0, 10.0, 0.0),
         radius: 10.0,
-        material: Box::new(Lambertian::from(&checker)),
+        material: Lambertian::<CheckerTexture>::boxed(checker),
     });
 
     world
@@ -114,12 +112,12 @@ pub fn two_perlin_spheres() -> List {
     world.push(Sphere {
         center: Vec3f::new(0.0, -1000.0, 0.0),
         radius: 1000.0,
-        material: Box::new(Lambertian::from(&perlin)),
+        material: Lambertian::<NoiseTexture>::boxed(perlin.clone()),
     });
     world.push(Sphere {
         center: Vec3f::new(0.0, 2.0, 0.0),
         radius: 2.0,
-        material: Box::new(Lambertian::from(&perlin)),
+        material: Lambertian::<NoiseTexture>::boxed(perlin),
     });
 
     world
@@ -131,7 +129,7 @@ pub fn earth() -> List {
     world.push(Sphere {
         center: Vec3f::repeat(0.0),
         radius: 2.,
-        material: Box::new(Lambertian::new(earth)),
+        material: Box::new(Lambertian::from(earth)),
     });
     world
 }
@@ -142,22 +140,15 @@ pub fn simple_light() -> List {
     world.push(Sphere {
         center: Vec3f::new(0.0, -1000.0, 0.0),
         radius: 1000.0,
-        material: Box::new(Lambertian::from(&perlin)),
+        material: Lambertian::<NoiseTexture>::boxed(perlin.clone()),
     });
     world.push(Sphere {
         center: Vec3f::new(0.0, 2.0, 0.0),
         radius: 2.0,
-        material: Box::new(Lambertian::from(&perlin)),
+        material: Lambertian::<NoiseTexture>::boxed(perlin),
     });
     let light = DiffuseLight::arc(Vec3f::repeat(4.));
-    world.push(XYRectangle {
-        material: light,
-        x_min: 3.0,
-        x_max: 5.0,
-        y_min: 1.0,
-        y_max: 3.0,
-        k: -2.0,
-    });
+    world.push(XY::rectangle(light, 3. ..5., 1. ..3., -2.0));
 
     world
 }
@@ -169,54 +160,12 @@ pub fn cornell_box() -> List {
     let white = Lambertian::arc(Vec3f::repeat(0.73));
     let green = Lambertian::arc(Vec3f::new(0.12, 0.45, 0.15));
     let light = DiffuseLight::arc(Vec3f::<Color>::repeat(15.));
-    world.push(YZRectangle {
-        material: green,
-        y_min: 0.0,
-        y_max: 555.,
-        z_min: 0.0,
-        z_max: 555.,
-        k: 555.,
-    });
-    world.push(YZRectangle {
-        material: red,
-        y_min: 0.0,
-        y_max: 555.,
-        z_min: 0.0,
-        z_max: 555.,
-        k: 0.,
-    });
-    world.push(XZRectangle {
-        material: light,
-        x_min: 213.0,
-        x_max: 343.,
-        z_min: 227.0,
-        z_max: 332.,
-        k: 554.,
-    });
-    world.push(XZRectangle {
-        material: white.clone(),
-        x_min: 0.0,
-        x_max: 555.,
-        z_min: 0.0,
-        z_max: 555.,
-        k: 555.,
-    });
-    world.push(XZRectangle {
-        material: white.clone(),
-        x_min: 0.0,
-        x_max: 555.,
-        z_min: 0.0,
-        z_max: 555.,
-        k: 0.,
-    });
-    world.push(XYRectangle {
-        material: white,
-        x_min: 0.0,
-        x_max: 555.,
-        y_min: 0.0,
-        y_max: 555.,
-        k: 555.,
-    });
+    world.push(YZ::rectangle(green, 0. ..555., 0. ..555., 555.));
+    world.push(YZ::rectangle(red, 0. ..555., 0. ..555., 0.));
+    world.push(XZ::rectangle(light, 213. ..343., 227. ..332., 554.));
+    world.push(XZ::rectangle(white.clone(), 0. ..555., 0.0..555., 555.));
+    world.push(XZ::rectangle(white.clone(), 0. ..555., 0. ..555., 0.));
+    world.push(XY::rectangle(white, 0. ..555., 0. ..555., 555.));
 
     world
 }

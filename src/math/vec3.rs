@@ -41,10 +41,6 @@ impl<T> Vec3f<T>
 where
     T: Phantom,
 {
-    pub fn from(items: &[Precision]) -> Self {
-        assert!(items.len() >= 3);
-        Self::new(items[0], items[1], items[2])
-    }
     pub fn scaled(items: &[u8], scale: Precision) -> Self {
         assert!(items.len() >= 3);
         Self::new(
@@ -127,13 +123,24 @@ where
             None
         }
     }
-    pub fn at(&self, x: usize) -> Precision {
-        self.items[x]
+    pub fn at<C>(&self, x: C) -> Precision
+    where
+        C: Into<usize>,
+    {
+        self.items[x.into()]
     }
 
     pub fn near_zero(&self) -> bool {
         let almost_zero = 1e-8;
         self.x().abs() < almost_zero && self.y().abs() < almost_zero && self.z().abs() < almost_zero
+    }
+
+    pub fn with_dimension<C>(mut self, dimension: C, value: Precision) -> Self
+    where
+        C: Into<usize>,
+    {
+        self.items[dimension.into()] = value;
+        self
     }
 }
 
@@ -182,6 +189,12 @@ impl PhantomPosition for Position {}
 impl<T: Phantom> From<(Precision, Precision, Precision)> for Vec3f<T> {
     fn from(x: (Precision, Precision, Precision)) -> Self {
         Self::new(x.0, x.1, x.2)
+    }
+}
+impl<T: Phantom> From<&[Precision]> for Vec3f<T> {
+    fn from(items: &[f64]) -> Self {
+        assert!(items.len() >= 3);
+        Self::new(items[0], items[1], items[2])
     }
 }
 impl<T: Phantom> std::ops::Add for Vec3f<T> {
@@ -249,5 +262,18 @@ impl<T: Phantom> std::ops::Neg for Vec3f<T> {
 impl<T: Phantom> std::iter::Sum for Vec3f<T> {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
         iter.fold(Self::repeat(0.0), std::ops::Add::add)
+    }
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+pub enum Coordinate {
+    X,
+    Y,
+    Z,
+}
+
+impl Into<usize> for Coordinate {
+    fn into(self) -> usize {
+        self as usize
     }
 }

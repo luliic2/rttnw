@@ -4,9 +4,11 @@
 use rand::Rng;
 
 use std::cmp::Ordering;
+use std::marker::PhantomData;
+use std::ops::Range;
 use std::sync::Arc;
 
-use super::{Bound, Material, Position, Ray, Vec3f};
+use super::{Bound, Coordinate, Material, Position, Ray, Vec3f};
 
 /// The result after a ray hits an object.
 #[derive(Clone, Copy)]
@@ -124,6 +126,11 @@ impl List {
     pub fn new() -> Self {
         Self { list: Vec::new() }
     }
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            list: Vec::with_capacity(capacity),
+        }
+    }
 }
 impl Hittable for List {
     fn hit(&self, ray: Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
@@ -143,31 +150,27 @@ impl Hittable for List {
         let mut iter = self.list.iter();
 
         if let Some(item) = iter.next()?.bounding_box(initial_time, final_time) {
-            // if let Some(bound) = item.bounding_box(initial_time, final_time) {
             return iter.try_fold(item, |accumulator, next| {
                 next.bounding_box(initial_time, final_time)
                     .map(|x| x.surrounding(accumulator))
             });
-            // }
         }
         None
     }
 }
 
 pub struct MovingSphere {
-    pub initial_center: Vec3f<Position>,
-    pub final_center: Vec3f<Position>,
-    pub initial_time: f64,
-    pub final_time: f64,
+    pub center: Range<Vec3f<Position>>,
+    pub time: Range<f64>,
     pub radius: f64,
     pub material: Box<dyn Material>,
 }
 
 impl MovingSphere {
     pub fn center(&self, time: f64) -> Vec3f<Position> {
-        self.initial_center
-            + ((time - self.initial_time) / (self.final_time - self.initial_time))
-                * (self.final_center - self.initial_center)
+        self.center.start
+            + ((time - self.time.start) / (self.time.end - self.time.start))
+                * (self.center.end - self.center.start)
     }
 }
 
@@ -231,8 +234,14 @@ pub struct BvhTree {
     bound: Bound,
 }
 
+impl From<List> for BvhTree {
+    fn from(list: List) -> Self {
+        Self::from_time(list, 0., 1.)
+    }
+}
+
 impl BvhTree {
-    pub fn from(mut list: List, initial_time: f64, final_time: f64) -> Self {
+    pub fn from_time(mut list: List, initial_time: f64, final_time: f64) -> Self {
         let length = list.list.len(); // Must due to borrow checker
         Self::new(&mut list.list, 0, length, initial_time, final_time)
     }
@@ -255,7 +264,6 @@ impl BvhTree {
         let (left, right) = match object_span {
             1 => {
                 let first: Arc<dyn Hittable> = objects.remove(0).into();
-                // let first = Arc::new(first);
                 (first.clone(), first)
             }
             2 => {
@@ -347,32 +355,137 @@ impl Hittable for BvhTree {
     }
 }
 
-/// A 2D Rectangle on the x-y plane.
-pub struct XYRectangle {
-    pub material: Arc<dyn Material>,
-    pub x_min: f64,
-    pub x_max: f64,
-    pub y_min: f64,
-    pub y_max: f64,
-    // `Width` of the plane. Must be non-zero.
-    pub k: f64,
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub struct PlaneCoordinates {
+    pub axis0: Coordinate,
+    pub axis1: Coordinate,
+    pub k: Coordinate,
 }
 
-impl Hittable for XYRectangle {
+/// Trait representing a 2D Plane
+pub trait Plane: Send + Sync {
+    /// The coordinates of the 2 rectangles created by both points.
+    /// The `f64`s correspond to the each rectangles's `k` side, one for each `Vec3f`.
+    fn points(p0: Vec3f<Position>, p1: Vec3f<Position>) -> (Range<f64>, Range<f64>, f64, f64);
+
+    /// The axes of the plane.
+    /// ```
+    /// let a = XY::axis();
+    /// let b = PlaneCoordinates {
+    ///     axis0: Coordinate::X,
+    ///     axis1: Coordinate::Y,
+    ///     k:  Coordinate::Z,
+    /// };
+    /// assert_eq!(a, b);
+    fn axes() -> PlaneCoordinates;
+
+    /// Create a rectangle in the plane. It's supposed to be used
+    /// as a aid type inference when creating a new rectangle.
+    fn rectangle<M: Material>(
+        material: Arc<M>,
+        p0: Range<f64>,
+        p1: Range<f64>,
+        k: f64,
+    ) -> Rectangle<M, Self>
+    where
+        Self: std::marker::Sized,
+    {
+        Rectangle::new(material, p0, p1, k)
+    }
+
+    /// Create 2 rectangles in the plane, with different `k`.
+    fn rectangles<M: Material>(
+        p0: Vec3f<Position>,
+        p1: Vec3f<Position>,
+        material: &Arc<M>,
+    ) -> (Rectangle<M, Self>, Rectangle<M, Self>)
+    where
+        Self: std::marker::Sized,
+    {
+        let (p0, p1, k0, k1) = Self::points(p0, p1);
+        let r0 = Rectangle::new(material.clone(), p0.clone(), p1.clone(), k0);
+        let r1 = Rectangle::new(material.clone(), p0, p1, k1);
+        (r0, r1)
+    }
+}
+
+// The whole plane thing is probably better implemented via an enum field.
+// However, I like that the plane information is part of the type.
+// Also, Peter Shirley creates a different rectangle class for each plane,
+// making this solution quite similar.
+/// A rectangle in a plane P
+pub struct Rectangle<M: Material, P: Plane> {
+    pub material: Arc<M>,
+    pub p0: Range<f64>,
+    pub p1: Range<f64>,
+    // Must be non-zero, or else problem appear when creating the bounding box in the BVH.
+    pub k: f64,
+    _phantom: PhantomData<P>,
+}
+
+/// The XY-Plane.
+pub struct XY(());
+/// The XZ-Plane.
+pub struct XZ(());
+/// The YZ-Plane.
+pub struct YZ(());
+
+impl Plane for XY {
+    fn points(p0: Vec3f<Position>, p1: Vec3f<Position>) -> (Range<f64>, Range<f64>, f64, f64) {
+        (p0.x()..p1.x(), p0.y()..p1.y(), p0.z(), p1.z())
+    }
+
+    fn axes() -> PlaneCoordinates {
+        PlaneCoordinates { axis0: Coordinate::X, axis1: Coordinate::Y, k: Coordinate::Z }
+    }
+}
+impl Plane for XZ {
+    fn points(p0: Vec3f<Position>, p1: Vec3f<Position>) -> (Range<f64>, Range<f64>, f64, f64) {
+        (p0.x()..p1.x(), p0.z()..p1.z(), p0.y(), p1.y())
+    }
+
+    fn axes() -> PlaneCoordinates {
+        PlaneCoordinates { axis0: Coordinate::X, axis1: Coordinate::Z, k: Coordinate::Y }
+    }
+}
+impl Plane for YZ {
+    fn points(p0: Vec3f<Position>, p1: Vec3f<Position>) -> (Range<f64>, Range<f64>, f64, f64) {
+        (p0.y()..p1.y(), p0.z()..p1.z(), p0.x(), p1.x())
+    }
+
+    fn axes() -> PlaneCoordinates {
+        PlaneCoordinates { axis0: Coordinate::Y, axis1: Coordinate::Z, k: Coordinate::X }
+    }
+}
+
+impl<M: Material, P: Plane> Rectangle<M, P> {
+    pub fn new(material: Arc<M>, p0: Range<f64>, p1: Range<f64>, k: f64) -> Self {
+        Self {
+            material,
+            p0,
+            p1,
+            k,
+            _phantom: PhantomData::<P>,
+        }
+    }
+}
+
+impl<M: Material, P: Plane> Hittable for Rectangle<M, P> {
     fn hit(&self, ray: Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
-        let t = (self.k - ray.origin().z()) / ray.direction().z();
+        let PlaneCoordinates { axis0,  axis1, k } = P::axes();
+        let t = (self.k - ray.origin().at(k)) / ray.direction().at(k);
         if t < t_min || t > t_max {
             return None;
         }
-        let x = ray.origin().x() + t * ray.direction().x();
-        let y = ray.origin().y() + t * ray.direction().y();
-        if x < self.x_min || x > self.x_max || y < self.y_min || y > self.y_max {
+        let p0 = ray.origin().at(axis0) + t * ray.direction().at(axis0);
+        let p1 = ray.origin().at(axis1) + t * ray.direction().at(axis1);
+        if !self.p0.contains(&p0) || !self.p1.contains(&p1) {
             return None;
         }
 
-        let u = (x - self.x_min) / (self.x_max - self.x_min);
-        let v = (y - self.y_min) / (self.y_max - self.y_min);
-        let outward_normal = Vec3f::new(0., 0., 1.);
+        let u = (p0 - self.p0.start) / (self.p0.end - self.p0.start);
+        let v = (p1 - self.p1.start) / (self.p1.end - self.p1.start);
+        let outward_normal = Vec3f::default().with_dimension(k, 1.);
         let (normal, front_face) = HitRecord::face_normal(ray, outward_normal);
         let p = ray.point_at_parameter(t);
         Some(HitRecord {
@@ -386,109 +499,19 @@ impl Hittable for XYRectangle {
         })
     }
 
-    fn bounding_box(&self, _: f64, _: f64) -> Option<Bound> {
-        // Must have non-zero width in each dimension. Pad the Z dimension a bit.
+    #[allow(unused_variables)]
+    fn bounding_box(&self, initial_time: f64, final_time: f64) -> Option<Bound> {
+        let PlaneCoordinates { axis0,  axis1, k } = P::axes();
         let bound = Bound {
-            min: Vec3f::new(self.x_min, self.y_min, self.k - 0.0001),
-            max: Vec3f::new(self.x_max, self.y_max, self.k + 0.0001),
-        };
-        Some(bound)
-    }
-}
-
-/// A 2D Rectangle on the x-z plane.
-pub struct XZRectangle {
-    pub material: Arc<dyn Material>,
-    pub x_min: f64,
-    pub x_max: f64,
-    pub z_min: f64,
-    pub z_max: f64,
-    // `Width` of the plane. Must be non-zero.
-    pub k: f64,
-}
-
-impl Hittable for XZRectangle {
-    fn hit(&self, ray: Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
-        let t = (self.k - ray.origin().y()) / ray.direction().y();
-        if t < t_min || t > t_max {
-            return None;
-        }
-        let x = ray.origin().x() + t * ray.direction().x();
-        let z = ray.origin().z() + t * ray.direction().z();
-        if x < self.x_min || x > self.x_max || z < self.z_min || z > self.z_max {
-            return None;
-        }
-
-        let u = (x - self.x_min) / (self.x_max - self.x_min);
-        let v = (z - self.z_min) / (self.z_max - self.z_min);
-        let outward_normal = Vec3f::new(0., 1., 0.);
-        let (normal, front_face) = HitRecord::face_normal(ray, outward_normal);
-        let p = ray.point_at_parameter(t);
-        Some(HitRecord {
-            t,
-            p,
-            normal,
-            material: &*self.material,
-            u,
-            v,
-            front_face,
-        })
-    }
-
-    fn bounding_box(&self, _: f64, _: f64) -> Option<Bound> {
-        // Must have non-zero width in each dimension. Pad the Y dimension a bit.
-        let bound = Bound {
-            min: Vec3f::new(self.x_min, self.k - 0.0001, self.z_min),
-            max: Vec3f::new(self.x_max, self.k + 0.0001, self.z_max),
-        };
-        Some(bound)
-    }
-}
-
-/// A 2D Rectangle on the y-z plane.
-pub struct YZRectangle {
-    pub material: Arc<dyn Material>,
-    pub y_min: f64,
-    pub y_max: f64,
-    pub z_min: f64,
-    pub z_max: f64,
-    // `Width` of the plane. Must be non-zero.
-    pub k: f64,
-}
-
-impl Hittable for YZRectangle {
-    fn hit(&self, ray: Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
-        let t = (self.k - ray.origin().x()) / ray.direction().x();
-        if t < t_min || t > t_max {
-            return None;
-        }
-        let y = ray.origin().x() + t * ray.direction().x();
-        let z = ray.origin().z() + t * ray.direction().z();
-        if y < self.y_min || y > self.y_max || z < self.z_min || z > self.z_max {
-            return None;
-        }
-
-        let u = (y - self.y_min) / (self.y_max - self.y_min);
-        let v = (z - self.z_min) / (self.z_max - self.z_min);
-        let outward_normal = Vec3f::new(1., 0., 0.);
-        let (normal, front_face) = HitRecord::face_normal(ray, outward_normal);
-        let p = ray.point_at_parameter(t);
-        Some(HitRecord {
-            t,
-            p,
-            normal,
-            material: &*self.material,
-            u,
-            v,
-            front_face,
-        })
-    }
-
-    fn bounding_box(&self, _: f64, _: f64) -> Option<Bound> {
-        // Must have non-zero width in each dimension. Pad the X dimension a bit.
-        let bound = Bound {
-            min: Vec3f::new(self.k - 0.0001, self.y_min, self.z_min),
-            max: Vec3f::new(self.k + 0.0001, self.y_max, self.z_max),
+            min: Vec3f::default()
+                .with_dimension(axis0, self.p0.start)
+                .with_dimension(axis1, self.p1.start)
+                // Must have non-zero value
+                .with_dimension(k, self.k - 0.0001),
+            max: Vec3f::default()
+                .with_dimension(axis0, self.p0.end)
+                .with_dimension(axis1, self.p1.end)
+                .with_dimension(k, self.k + 0.0001),
         };
         Some(bound)
     }
