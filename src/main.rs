@@ -55,7 +55,7 @@ struct Scene {
 }
 
 /// Saves the scene to a .png image of size `nx*ny`
-fn render(mut width: u32, mut aspect_ratio: f64, mut samples: usize, scene: usize) {
+fn render(mut width: u32, mut aspect_ratio: f64, mut samples: usize, scene: usize) -> Option<()> {
     let Scene {
         background,
         world,
@@ -162,7 +162,24 @@ fn render(mut width: u32, mut aspect_ratio: f64, mut samples: usize, scene: usiz
                 ..Default::default()
             }
         }
-        _ => panic!("Wrong scene"),
+        9 => {
+            println!("Running scene final_scene");
+            samples = 10000;
+            aspect_ratio = 1.0;
+            width = 800;
+            Scene {
+                background: Vec3f::new(0.0, 0.0, 0.0),
+                world: scenes::final_scene(),
+                lookfrom: Vec3f::new(478.0, 278.0, -600.0),
+                lookat: Vec3f::new(278., 278., 0.),
+                vertical_fov: 40.,
+                ..Default::default()
+            }
+        }
+        _ => {
+            eprintln!("There is no scene {}", scene);
+            return None;
+        },
     };
     let height = (width as f64 / aspect_ratio) as u32;
     let view_up = Vec3f::new(0.0, 1.0, 0.0);
@@ -179,16 +196,12 @@ fn render(mut width: u32, mut aspect_ratio: f64, mut samples: usize, scene: usiz
         close_time: 1.0,
     });
 
-    // let world = BvhTree::from(world, 0., 1.);
-
     let progress = ProgressBar::new(height as u64)
         .with_style(ProgressStyle::default_spinner().template("{pos}/{len} {spinner:.dim.bold}"));
     // For each pixel
     let image: Vec<Rgba> = (0..height)
-        // .into_iter()
         .into_par_iter()
         .rev()
-        // .progress()
         .progress_with(progress)
         .flat_map(|j| {
             (0..width)
@@ -215,7 +228,8 @@ fn render(mut width: u32, mut aspect_ratio: f64, mut samples: usize, scene: usiz
         })
         .collect();
     let buffer: &[u8] = bytemuck::cast_slice(&image);
-    image::save_buffer("image.png", buffer, width, height, image::ColorType::Rgba8).unwrap()
+    image::save_buffer("image.png", buffer, width, height, image::ColorType::Rgba8).unwrap();
+    Some(())
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -223,7 +237,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let scene = args.get(1).unwrap_or(&String::from("1")).parse()?;
     println!("Scene number: {}", scene);
     let instant = std::time::Instant::now();
-    render(400, 16.0 / 9.0, 100, scene);
-    println!("{:?}", instant.elapsed());
+    let result = render(400, 16.0 / 9.0, 100, scene);
+    if result.is_some() {
+        println!("{:?}", instant.elapsed());
+    }
     Ok(())
 }

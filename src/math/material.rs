@@ -107,8 +107,16 @@ impl Metal {
         }
     }
 
+    #[allow(dead_code)]
     pub fn boxed(albedo: Vec3f<Color>, fuzz: f64) -> Box<Self> {
         Box::new(Self {
+            albedo,
+            fuzz: fuzz.min(1.0),
+        })
+    }
+
+    pub fn arc(albedo: Vec3f<Color>, fuzz: f64) -> Arc<Self> {
+        Arc::new(Self {
             albedo,
             fuzz: fuzz.min(1.0),
         })
@@ -149,6 +157,7 @@ impl Dielectric {
         Arc::new(Self { refraction_index })
     }
 
+    #[allow(dead_code)]
     pub fn boxed(refraction_index: f64) -> Box<Self> {
         Box::new(Self { refraction_index })
     }

@@ -1,9 +1,9 @@
 use rand::Rng;
 
 use crate::math::{
-    CheckerTexture, Color, ConstantMedium, Cube, Dielectric, DiffuseLight, Hittable, ImageTexture,
-    Lambertian, List, Metal, MovingSphere, NoiseTexture, Plane, Position, Sphere, Vec3f, XY, XZ,
-    YZ,
+    BvhTree, CheckerTexture, Color, ConstantMedium, Cube, Dielectric, DiffuseLight, Hittable,
+    ImageTexture, Lambertian, List, Metal, MovingSphere, NoiseTexture, Plane, Position, Sphere,
+    Vec3f, XY, XZ, YZ,
 };
 use std::sync::Arc;
 
@@ -18,7 +18,7 @@ pub fn random_scene() -> List {
     list.push(Sphere {
         center: (0.0, -1000.0, 0.0).into(),
         radius: 1000.0,
-        material: Lambertian::boxed(checker),
+        material: Lambertian::arc(checker),
     });
     for a in -11..11 {
         for b in -11..11 {
@@ -47,7 +47,7 @@ pub fn random_scene() -> List {
                     list.push(Sphere {
                         center,
                         radius: 0.2,
-                        material: Metal::boxed(
+                        material: Metal::arc(
                             (
                                 0.5 * (1.0 - rng.gen::<f64>()),
                                 0.5 * (1.0 - rng.gen::<f64>()),
@@ -62,7 +62,7 @@ pub fn random_scene() -> List {
                     list.push(Sphere {
                         center,
                         radius: 0.2,
-                        material: Dielectric::boxed(1.5),
+                        material: Dielectric::arc(1.5),
                     })
                 }
             }
@@ -71,17 +71,17 @@ pub fn random_scene() -> List {
     list.push(Sphere {
         center: (0.0, 1.0, 0.0).into(),
         radius: 1.0,
-        material: Dielectric::boxed(1.5),
+        material: Dielectric::arc(1.5),
     });
     list.push(Sphere {
         center: (-4.0, 1.0, 0.0).into(),
         radius: 1.0,
-        material: Lambertian::boxed(Vec3f::new(0.4, 0.2, 0.1)),
+        material: Lambertian::arc(Vec3f::new(0.4, 0.2, 0.1)),
     });
     list.push(Sphere {
         center: (4.0, 1.0, 0.0).into(),
         radius: 1.0,
-        material: Metal::boxed((0.7, 0.6, 0.5).into(), 0.0),
+        material: Metal::arc((0.7, 0.6, 0.5).into(), 0.0),
     });
 
     list
@@ -96,12 +96,12 @@ pub fn two_spheres() -> List {
     world.push(Sphere {
         center: Vec3f::new(0.0, -10.0, 0.0),
         radius: 10.0,
-        material: Lambertian::<CheckerTexture>::boxed(checker.clone()),
+        material: Lambertian::<CheckerTexture>::arc(checker.clone()),
     });
     world.push(Sphere {
         center: Vec3f::new(0.0, 10.0, 0.0),
         radius: 10.0,
-        material: Lambertian::<CheckerTexture>::boxed(checker),
+        material: Lambertian::<CheckerTexture>::arc(checker),
     });
 
     world
@@ -113,12 +113,12 @@ pub fn two_perlin_spheres() -> List {
     world.push(Sphere {
         center: Vec3f::new(0.0, -1000.0, 0.0),
         radius: 1000.0,
-        material: Lambertian::<NoiseTexture>::boxed(perlin.clone()),
+        material: Lambertian::<NoiseTexture>::arc(perlin.clone()),
     });
     world.push(Sphere {
         center: Vec3f::new(0.0, 2.0, 0.0),
         radius: 2.0,
-        material: Lambertian::<NoiseTexture>::boxed(perlin),
+        material: Lambertian::<NoiseTexture>::arc(perlin),
     });
 
     world
@@ -130,7 +130,7 @@ pub fn earth() -> List {
     world.push(Sphere {
         center: Vec3f::repeat(0.0),
         radius: 2.,
-        material: Box::new(Lambertian::from(earth)),
+        material: Lambertian::arc(earth),
     });
     world
 }
@@ -141,12 +141,12 @@ pub fn simple_light() -> List {
     world.push(Sphere {
         center: Vec3f::new(0.0, -1000.0, 0.0),
         radius: 1000.0,
-        material: Lambertian::<NoiseTexture>::boxed(perlin.clone()),
+        material: Lambertian::<NoiseTexture>::arc(perlin.clone()),
     });
     world.push(Sphere {
         center: Vec3f::new(0.0, 2.0, 0.0),
         radius: 2.0,
-        material: Lambertian::<NoiseTexture>::boxed(perlin),
+        material: Lambertian::<NoiseTexture>::arc(perlin),
     });
     let light = DiffuseLight::arc(Vec3f::repeat(4.));
     world.push(XY::rectangle(light, 3. ..5., 1. ..3., -2.0));
@@ -231,6 +231,87 @@ pub fn smoke_cornell_box() -> List {
         0.01,
         Arc::new(Vec3f::repeat(1.)),
     ));
+
+    world
+}
+
+pub fn final_scene() -> List {
+    let mut boxes = List::new();
+    let ground = Lambertian::arc(Vec3f::new(0.48, 0.83, 0.53));
+
+    let mut rng = rand::thread_rng();
+    let boxes_per_side = 20;
+    for i in 0..boxes_per_side {
+        for j in 0..boxes_per_side {
+            let w = 100.;
+            let v0 = Vec3f::new(-1000. + i as f64 * w, 0., -1000. + j as f64 * w);
+            let v1 = Vec3f::new(v0.x() + w, rng.gen_range(1. ..101.), v0.z() + w);
+
+            let cube = Cube::new(v0, v1, ground.clone());
+            boxes.push(cube);
+        }
+    }
+
+    let mut world = List::new();
+
+    world.push(BvhTree::from(boxes));
+
+    let light = DiffuseLight::arc(Vec3f::repeat(7.));
+    world.push(XZ::rectangle(light, 123. ..423., 147. ..412., 554.));
+
+    let center1 = Vec3f::repeat(400.);
+    let center2 = center1 + Vec3f::new(30., 0., 0.);
+    world.push(MovingSphere {
+        center: center1..center2,
+        time: 0. ..1.,
+        radius: 50.,
+        material: Lambertian::boxed(Vec3f::new(0.7, 0.3, 0.1)),
+    });
+
+    let boundary = Sphere {
+        center: Vec3f::new(360., 150., 145.),
+        radius: 70.,
+        material: Dielectric::arc(1.5),
+    };
+    world.push(boundary.clone());
+    world.push(ConstantMedium::new(
+        Arc::new(boundary),
+        0.2,
+        Arc::new(Vec3f::new(0.2, 0.4, 0.9)),
+    ));
+    world.push(ConstantMedium::new(
+        Arc::new(Sphere {
+            center: Vec3f::repeat(0.),
+            radius: 5000.,
+            material: Dielectric::arc(1.5),
+        }),
+        0.001,
+        Arc::new(Vec3f::repeat(1.)),
+    ));
+
+    let earth = ImageTexture::new("assets/earth.png");
+    world.push(Sphere {
+        center: Vec3f::new(400., 200., 400.),
+        radius: 100.,
+        material: Lambertian::arc(earth),
+    });
+
+    let mut boxes = List::new();
+    let white = Lambertian::arc(Vec3f::repeat(0.73));
+    let ns = 1000;
+    for _ in 0..ns {
+        boxes.push(Sphere {
+            center: Vec3f::random(0. ..165.),
+            radius: 10.,
+            material: white.clone(),
+        });
+    }
+
+    world.push(
+        BvhTree::from(boxes)
+            .rotate_y(15.)
+            .translate(Vec3f::new(-100., 270., 395.)),
+    );
 
     world
 }

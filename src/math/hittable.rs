@@ -66,10 +66,11 @@ pub trait Hittable: Send + Sync {
 }
 
 /// A sphere that can be hit by a ray.
+#[derive(Clone)]
 pub struct Sphere {
     pub center: Vec3f<Position>,
     pub radius: f64,
-    pub material: Box<dyn Material>,
+    pub material: Arc<dyn Material>,
 }
 
 impl Sphere {
