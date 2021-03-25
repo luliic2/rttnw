@@ -232,14 +232,39 @@ fn render(mut width: u32, mut aspect_ratio: f64, mut samples: usize, scene: usiz
     Some(())
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+
+fn main() -> Result<(), DummyError> {
     let args: Vec<String> = std::env::args().collect();
-    let scene = args.get(1).unwrap_or(&String::from("1")).parse()?;
+    if args.len() != 2 {
+        eprintln!("Usage: {} <scene>", args[0]);
+        eprintln!("Possible scenes:");
+        eprintln!("\t- 1: random_scene");
+        eprintln!("\t- 2: two_spheres");
+        eprintln!("\t- 3: two_perlin_spheres");
+        eprintln!("\t- 4: earth");
+        eprintln!("\t- 5: simple_light");
+        eprintln!("\t- 6: empty_cornell_box");
+        eprintln!("\t- 7: cornell_box");
+        eprintln!("\t- 8: smoke_cornell_box");
+        eprintln!("\t- 9: final_scene");
+        return Err(ERROR);
+    }
+    let scene = args.get(1).unwrap_or(&String::from("1")).parse().map_err(|_| ERROR)?;
     println!("Scene number: {}", scene);
     let instant = std::time::Instant::now();
-    let result = render(400, 16.0 / 9.0, 100, scene);
-    if result.is_some() {
-        println!("{:?}", instant.elapsed());
-    }
+    render(400, 16.0 / 9.0, 100, scene).ok_or(ERROR)?;
+    println!("{:?}", instant.elapsed());
     Ok(())
 }
+
+use std::fmt::{Display, Formatter, self};
+#[derive(Debug)]
+struct DummyError;
+impl Display for DummyError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.write_str("There was an error")
+    }
+}
+impl Error for DummyError {}
+
+const ERROR: DummyError = DummyError{};

@@ -268,6 +268,17 @@ pub fn final_scene() -> List {
         material: Lambertian::boxed(Vec3f::new(0.7, 0.3, 0.1)),
     });
 
+    world.push(Sphere {
+        center: Vec3f::new(260., 150., 45.),
+        radius: 50.0,
+        material: Dielectric::arc(1.5),
+    });
+    world.push(Sphere {
+        center: Vec3f::new(0., 150., 45.),
+        radius: 50.0,
+        material: Metal::arc(Vec3f::new(0.8, 0.8, 0.9), 1.),
+    });
+
     let boundary = Sphere {
         center: Vec3f::new(360., 150., 145.),
         radius: 70.,
@@ -285,7 +296,7 @@ pub fn final_scene() -> List {
             radius: 5000.,
             material: Dielectric::arc(1.5),
         }),
-        0.001,
+        0.0001,
         Arc::new(Vec3f::repeat(1.)),
     ));
 
@@ -294,6 +305,12 @@ pub fn final_scene() -> List {
         center: Vec3f::new(400., 200., 400.),
         radius: 100.,
         material: Lambertian::arc(earth),
+    });
+    let noise = NoiseTexture::scaled(0.1);
+    world.push(Sphere {
+        center: Vec3f::new(220., 280., 300.),
+        radius: 80.0,
+        material: Lambertian::arc(noise)
     });
 
     let mut boxes = List::new();
