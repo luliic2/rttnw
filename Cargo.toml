@@ -1,5 +1,5 @@
 [package]
-name = "rtiow"
+name = "rttnw"
 version = "0.1.0"
 authors = ["Ilya Barkov <32970394+luliic2@users.noreply.github.com>"]
 edition = "2018"
