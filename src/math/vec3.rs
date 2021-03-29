@@ -112,16 +112,12 @@ where
     pub fn reflect(&self, n: Vec3f<T>) -> Vec3f<T> {
         *self - 2.0 * self.dot(n) * n
     }
-    pub fn refract(&self, n: Vec3f<T>, ni_over_nt: f64) -> Option<Vec3f<T>> {
-        let unit = self.unit();
-        let dt = unit.dot(n);
-        let discriminant = 1.0 - ni_over_nt.powf(2.0) * (1.0 - dt.powf(2.0));
-        if discriminant > 0.0 {
-            let result = ni_over_nt * (unit - n * dt) - n * discriminant.sqrt();
-            Some(result)
-        } else {
-            None
-        }
+
+    pub fn refract(self, n: Vec3f<T>, etai_over_etat: f64) -> Vec3f<T> {
+        let cos_theta = (-self).dot(n).min(1.0);
+        let ray_perpendicular = etai_over_etat * (self + cos_theta*n);
+        let ray_parallel = -f64::sqrt(f64::abs(1. - ray_perpendicular.squared_length())) * n;
+        ray_perpendicular + ray_parallel
     }
     pub fn at<C>(&self, x: C) -> Precision
     where
@@ -301,8 +297,10 @@ pub enum Coordinate {
     Z,
 }
 
-impl Into<usize> for Coordinate {
-    fn into(self) -> usize {
-        self as usize
+impl From<Coordinate> for usize {
+    fn from(c: Coordinate) -> Self {
+        let result = c as usize;
+        assert!(result < 3);
+        result
     }
 }

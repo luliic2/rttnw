@@ -441,13 +441,13 @@ pub struct Rectangle<M: Material, P: Plane> {
 }
 
 /// The XY-Plane.
-pub struct XY(());
+pub struct Xy(());
 /// The XZ-Plane.
-pub struct XZ(());
+pub struct Xz(());
 /// The YZ-Plane.
-pub struct YZ(());
+pub struct Yz(());
 
-impl Plane for XY {
+impl Plane for Xy {
     fn points(p0: Vec3f<Position>, p1: Vec3f<Position>) -> (Range<f64>, Range<f64>, f64, f64) {
         (p0.x()..p1.x(), p0.y()..p1.y(), p0.z(), p1.z())
     }
@@ -460,7 +460,7 @@ impl Plane for XY {
         }
     }
 }
-impl Plane for XZ {
+impl Plane for Xz {
     fn points(p0: Vec3f<Position>, p1: Vec3f<Position>) -> (Range<f64>, Range<f64>, f64, f64) {
         (p0.x()..p1.x(), p0.z()..p1.z(), p0.y(), p1.y())
     }
@@ -473,7 +473,7 @@ impl Plane for XZ {
         }
     }
 }
-impl Plane for YZ {
+impl Plane for Yz {
     fn points(p0: Vec3f<Position>, p1: Vec3f<Position>) -> (Range<f64>, Range<f64>, f64, f64) {
         (p0.y()..p1.y(), p0.z()..p1.z(), p0.x(), p1.x())
     }
@@ -558,13 +558,13 @@ impl Cube {
         T: 'static + Material,
     {
         let mut sides = List::with_capacity(6);
-        let xy = XY::rectangles(box_min, box_max, &material);
+        let xy = Xy::rectangles(box_min, box_max, &material);
         sides.push(xy.0);
         sides.push(xy.1);
-        let xz = XZ::rectangles(box_min, box_max, &material);
+        let xz = Xz::rectangles(box_min, box_max, &material);
         sides.push(xz.0);
         sides.push(xz.1);
-        let yz = YZ::rectangles(box_min, box_max, &material);
+        let yz = Yz::rectangles(box_min, box_max, &material);
         sides.push(yz.0);
         sides.push(yz.1);
 
@@ -648,8 +648,8 @@ impl YRotate {
             (Default::default(), false)
         };
 
-        let mut min = Vec3f::repeat(std::f64::INFINITY);
-        let mut max = Vec3f::repeat(std::f64::NEG_INFINITY);
+        let mut min = Vec3f::repeat(f64::INFINITY);
+        let mut max = Vec3f::repeat(f64::NEG_INFINITY);
 
         for i in 0..2 {
             for j in 0..2 {
@@ -744,11 +744,11 @@ impl Hittable for ConstantMedium {
         let debugging = _enable_debug && rng.gen::<f64>() < 0.00001;
         if let Some(mut record1) =
             self.boundary
-                .hit(ray, std::f64::NEG_INFINITY, std::f64::INFINITY)
+                .hit(ray, f64::NEG_INFINITY, f64::INFINITY)
         {
             if let Some(mut record2) =
                 self.boundary
-                    .hit(ray, record1.t + 0.0001, std::f64::INFINITY)
+                    .hit(ray, record1.t + 0.0001, f64::INFINITY)
             {
                 if debugging {
                     eprintln!("\nt_min = {}, t_max = {}", record1.t, record2.t);

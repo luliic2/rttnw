@@ -10,6 +10,14 @@ pub trait Material: Send + Sync {
     fn emitted(&self, u: f64, v: f64, point: Vec3f<Position>) -> Vec3f<Color> {
         Vec3f::repeat(0.)
     }
+
+    fn arc(self) -> Arc<Self> where Self: Sized {
+        Arc::new(self)
+    }
+
+    fn boxed(self) -> Box<Self> where Self: Sized {
+        Box::new(self)
+    }
 }
 
 /// Solid material
@@ -171,40 +179,26 @@ impl Dielectric {
 impl Material for Dielectric {
     fn scatter(&self, ray: Ray, record: HitRecord) -> Option<(Vec3f<Color>, Ray)> {
         let mut rng = rand::thread_rng();
-        let reflected = ray.direction().reflect(record.normal);
         // Attenuation is 1 because glass absorbs nothing
         let attenuation = Vec3f::new(1.0, 1.0, 1.0);
-        let (outward_normal, ni_over_nt, cosine) = if ray.direction().dot(record.normal) > 0.0 {
-            (
-                -record.normal,
-                self.refraction_index,
-                self.refraction_index * ray.direction().dot(record.normal)
-                    / ray.direction().magnitude(),
-            )
+        let refraction_ratio = if record.front_face { 1.0 / self.refraction_index } else { self.refraction_index };
+        let unit_direction = ray.direction().unit();
+        let cos_theta = (-unit_direction).dot(record.normal).min(1.);
+        let sin_theta = f64::sqrt(1.0 - cos_theta.powi(2));
+        let cannot_refract = refraction_ratio * sin_theta > 1.0;
+        let direction = if cannot_refract || Self::schlick(cos_theta, refraction_ratio) > rng.gen() {
+            unit_direction.reflect(record.normal)
         } else {
-            (
-                record.normal,
-                1.0 / self.refraction_index,
-                -ray.direction().dot(record.normal) / ray.direction().magnitude(),
-            )
+            unit_direction.refract(record.normal, refraction_ratio)
         };
-        let (refracted, reflect_probability) =
-            if let Some(refracted) = ray.direction().refract(outward_normal, ni_over_nt) {
-                (refracted, Self::schlick(cosine, self.refraction_index))
-            } else {
-                (Default::default(), 1.0)
-            };
+        let scattered = Ray {
+            a: record.p,
+            b: direction,
+            time: ray.time,
+        };
         Some((
             attenuation,
-            Ray {
-                a: record.p,
-                b: if reflect_probability > rng.gen() {
-                    reflected
-                } else {
-                    refracted
-                },
-                time: ray.time,
-            },
+            scattered
         ))
     }
 }
