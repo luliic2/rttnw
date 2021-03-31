@@ -1,5 +1,5 @@
 # rttnw
-Ray Tracing: The Next Weekend implementation in Rust
+Ray Tracing: The Next Week implementation in Rust
 
 ## How to run 
 1. Install Rust: [Link here](https://www.rust-lang.org/tools/install).
