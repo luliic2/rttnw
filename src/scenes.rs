@@ -2,10 +2,24 @@ use rand::Rng;
 
 use crate::math::{
     BvhTree, CheckerTexture, Color, ConstantMedium, Cube, Dielectric, DiffuseLight, Hittable,
-    ImageTexture, Lambertian, List, Metal, MovingSphere, NoiseTexture, Plane, Position, Sphere,
-    Vec3f, XY, XZ, YZ,
+    ImageTexture, Lambertian, List, Material, Metal, MovingSphere, NoiseTexture, Plane, Position,
+    Sphere, Vec3f, Xy, Xz, Yz,
 };
 use std::sync::Arc;
+
+#[derive(Default)]
+pub struct Scene {
+    pub background: Vec3f<Color>,
+    pub world: List,
+    pub lookfrom: Vec3f<Position>,
+    pub lookat: Vec3f<Position>,
+    pub vertical_fov: f64,
+    pub aperture: f64,
+    pub width: u32,
+    pub height: u32,
+    pub aspect_ratio: f64,
+    pub samples: u32,
+}
 
 /// Generate the cover of the book
 pub fn random_scene() -> List {
@@ -149,7 +163,7 @@ pub fn simple_light() -> List {
         material: Lambertian::<NoiseTexture>::arc(perlin),
     });
     let light = DiffuseLight::arc(Vec3f::repeat(4.));
-    world.push(XY::rectangle(light, 3. ..5., 1. ..3., -2.0));
+    world.push(Xy::rectangle(light, 3. ..5., 1. ..3., -2.0));
 
     world
 }
@@ -162,12 +176,12 @@ pub fn empty_cornell_box() -> List {
     let green = Lambertian::arc(Vec3f::new(0.12, 0.45, 0.15));
     let light = DiffuseLight::arc(Vec3f::<Color>::repeat(15.));
 
-    world.push(YZ::rectangle(green, 0. ..555., 0. ..555., 555.));
-    world.push(YZ::rectangle(red, 0. ..555., 0. ..555., 0.));
-    world.push(XZ::rectangle(light, 213. ..343., 227. ..332., 554.));
-    world.push(XZ::rectangle(white.clone(), 0. ..555., 0.0..555., 555.));
-    world.push(XZ::rectangle(white.clone(), 0. ..555., 0. ..555., 0.));
-    world.push(XY::rectangle(white, 0. ..555., 0. ..555., 555.));
+    world.push(Yz::rectangle(green, 0. ..555., 0. ..555., 555.));
+    world.push(Yz::rectangle(red, 0. ..555., 0. ..555., 0.));
+    world.push(Xz::rectangle(light, 213. ..343., 227. ..332., 554.));
+    world.push(Xz::rectangle(white.clone(), 0. ..555., 0.0..555., 555.));
+    world.push(Xz::rectangle(white.clone(), 0. ..555., 0. ..555., 0.));
+    world.push(Xy::rectangle(white, 0. ..555., 0. ..555., 555.));
 
     world
 }
@@ -203,12 +217,12 @@ pub fn smoke_cornell_box() -> List {
     let green = Lambertian::arc(Vec3f::new(0.12, 0.45, 0.15));
     let light = DiffuseLight::arc(Vec3f::<Color>::repeat(7.));
 
-    world.push(YZ::rectangle(green, 0. ..555., 0. ..555., 555.));
-    world.push(YZ::rectangle(red, 0. ..555., 0. ..555., 0.));
-    world.push(XZ::rectangle(light, 113. ..443., 127. ..432., 554.));
-    world.push(XZ::rectangle(white.clone(), 0. ..555., 0.0..555., 555.));
-    world.push(XZ::rectangle(white.clone(), 0. ..555., 0. ..555., 0.));
-    world.push(XY::rectangle(white.clone(), 0. ..555., 0. ..555., 555.));
+    world.push(Yz::rectangle(green, 0. ..555., 0. ..555., 555.));
+    world.push(Yz::rectangle(red, 0. ..555., 0. ..555., 0.));
+    world.push(Xz::rectangle(light, 113. ..443., 127. ..432., 554.));
+    world.push(Xz::rectangle(white.clone(), 0. ..555., 0.0..555., 555.));
+    world.push(Xz::rectangle(white.clone(), 0. ..555., 0. ..555., 0.));
+    world.push(Xy::rectangle(white.clone(), 0. ..555., 0. ..555., 555.));
 
     let c1 = Cube::new(
         Vec3f::new(0., 0., 0.),
@@ -257,7 +271,7 @@ pub fn final_scene() -> List {
     world.push(BvhTree::from(boxes));
 
     let light = DiffuseLight::arc(Vec3f::repeat(7.));
-    world.push(XZ::rectangle(light, 123. ..423., 147. ..412., 554.));
+    world.push(Xz::rectangle(light, 123. ..423., 147. ..412., 554.));
 
     let center1 = Vec3f::repeat(400.);
     let center2 = center1 + Vec3f::new(30., 0., 0.);
@@ -310,7 +324,7 @@ pub fn final_scene() -> List {
     world.push(Sphere {
         center: Vec3f::new(220., 280., 300.),
         radius: 80.0,
-        material: Lambertian::arc(noise)
+        material: Lambertian::arc(noise),
     });
 
     let mut boxes = List::new();
@@ -331,4 +345,33 @@ pub fn final_scene() -> List {
     );
 
     world
+}
+
+// 2280x1080
+pub fn galaxy_s10e() -> Scene {
+    let mut world = List::new();
+    let width = 1080;
+    let height = 2280;
+    let aspect_ratio = (width / height) as f64;
+
+    let light = Sphere {
+        center: Vec3f::default(),
+        radius: (width / 2) as f64 * 0.5,
+        material: Lambertian::from(Vec3f::repeat(7.5)).arc(),
+    };
+
+    world.push(light);
+
+    Scene {
+        background: Vec3f::new(0.5, 0.5, 0.5),
+        world,
+        lookfrom: Default::default(),
+        lookat: Vec3f::new(0., 0., 0.),
+        vertical_fov: 40.,
+        aperture: 0.1,
+        width,
+        height,
+        aspect_ratio,
+        samples: 200,
+    }
 }

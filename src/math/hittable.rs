@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 use std::ops::Range;
 use std::sync::Arc;
 
-use super::{Bound, Coordinate, Material, Position, Ray, Vec3f, Isotropic};
+use super::{Bound, Coordinate, Isotropic, Material, Position, Ray, Vec3f};
 use crate::math::Texture;
 
 /// The result after a ray hits an object.
@@ -317,7 +317,7 @@ impl BvhTree {
             });
 
         let bound = box_left.surrounding(box_right);
-        Self { bound, left, right }
+        Self { left, right, bound }
     }
 
     fn comparator(x: &dyn Hittable, y: &dyn Hittable, axis: usize) -> Ordering {
@@ -617,14 +617,12 @@ impl Hittable for Translate {
     }
 
     fn bounding_box(&self, initial_time: f64, final_time: f64) -> Option<Bound> {
-        if let Some(bound) = self.item.bounding_box(initial_time, final_time) {
-            Some(Bound {
+        self.item
+            .bounding_box(initial_time, final_time)
+            .map(|bound| Bound {
                 min: bound.min + self.offset,
                 max: bound.max + self.offset,
             })
-        } else {
-            None
-        }
     }
 }
 
@@ -673,11 +671,11 @@ impl YRotate {
 
         let bound = Bound { min, max };
         Self {
-            bound,
-            has_bound,
             item,
             sin_theta,
             cos_theta,
+            has_bound,
+            bound,
         }
     }
 }
@@ -728,9 +726,17 @@ pub struct ConstantMedium {
 }
 
 impl ConstantMedium {
-    pub fn new(boundary: Arc<dyn Hittable>, density: f64, phase_function: Arc<dyn Texture>) -> Self {
+    pub fn new(
+        boundary: Arc<dyn Hittable>,
+        density: f64,
+        phase_function: Arc<dyn Texture>,
+    ) -> Self {
         Self {
-            boundary, phase_function: Isotropic { albedo: phase_function }, neg_inv_density: -1./density
+            boundary,
+            phase_function: Isotropic {
+                albedo: phase_function,
+            },
+            neg_inv_density: -1. / density,
         }
     }
 }
@@ -742,14 +748,8 @@ impl Hittable for ConstantMedium {
         // Print occasional samples when debugging. To enable, set enableDebug true.
         let _enable_debug = false;
         let debugging = _enable_debug && rng.gen::<f64>() < 0.00001;
-        if let Some(mut record1) =
-            self.boundary
-                .hit(ray, f64::NEG_INFINITY, f64::INFINITY)
-        {
-            if let Some(mut record2) =
-                self.boundary
-                    .hit(ray, record1.t + 0.0001, f64::INFINITY)
-            {
+        if let Some(mut record1) = self.boundary.hit(ray, f64::NEG_INFINITY, f64::INFINITY) {
+            if let Some(mut record2) = self.boundary.hit(ray, record1.t + 0.0001, f64::INFINITY) {
                 if debugging {
                     eprintln!("\nt_min = {}, t_max = {}", record1.t, record2.t);
                 }

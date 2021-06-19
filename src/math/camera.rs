@@ -47,12 +47,12 @@ impl Camera {
         let open_time = descriptor.open_time;
         let close_time = descriptor.close_time;
         Self {
+            origin,
             lower_left_corner,
             horizontal,
             vertical,
-            origin,
-            v,
             u,
+            v,
             w,
             lens_radius,
             open_time,

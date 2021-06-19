@@ -11,11 +11,17 @@ pub trait Material: Send + Sync {
         Vec3f::repeat(0.)
     }
 
-    fn arc(self) -> Arc<Self> where Self: Sized {
+    fn arc(self) -> Arc<Self>
+    where
+        Self: Sized,
+    {
         Arc::new(self)
     }
 
-    fn boxed(self) -> Box<Self> where Self: Sized {
+    fn boxed(self) -> Box<Self>
+    where
+        Self: Sized,
+    {
         Box::new(self)
     }
 }
@@ -181,12 +187,17 @@ impl Material for Dielectric {
         let mut rng = rand::thread_rng();
         // Attenuation is 1 because glass absorbs nothing
         let attenuation = Vec3f::new(1.0, 1.0, 1.0);
-        let refraction_ratio = if record.front_face { 1.0 / self.refraction_index } else { self.refraction_index };
+        let refraction_ratio = if record.front_face {
+            1.0 / self.refraction_index
+        } else {
+            self.refraction_index
+        };
         let unit_direction = ray.direction().unit();
         let cos_theta = (-unit_direction).dot(record.normal).min(1.);
         let sin_theta = f64::sqrt(1.0 - cos_theta.powi(2));
         let cannot_refract = refraction_ratio * sin_theta > 1.0;
-        let direction = if cannot_refract || Self::schlick(cos_theta, refraction_ratio) > rng.gen() {
+        let direction = if cannot_refract || Self::schlick(cos_theta, refraction_ratio) > rng.gen()
+        {
             unit_direction.reflect(record.normal)
         } else {
             unit_direction.refract(record.normal, refraction_ratio)
@@ -196,10 +207,7 @@ impl Material for Dielectric {
             b: direction,
             time: ray.time,
         };
-        Some((
-            attenuation,
-            scattered
-        ))
+        Some((attenuation, scattered))
     }
 }
 
@@ -250,7 +258,7 @@ impl Material for DiffuseLight {
 }
 
 pub struct Isotropic {
-    pub albedo: Arc<dyn Texture>
+    pub albedo: Arc<dyn Texture>,
 }
 
 impl Material for Isotropic {

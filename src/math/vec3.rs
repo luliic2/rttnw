@@ -115,7 +115,7 @@ where
 
     pub fn refract(self, n: Vec3f<T>, etai_over_etat: f64) -> Vec3f<T> {
         let cos_theta = (-self).dot(n).min(1.0);
-        let ray_perpendicular = etai_over_etat * (self + cos_theta*n);
+        let ray_perpendicular = etai_over_etat * (self + cos_theta * n);
         let ray_parallel = -f64::sqrt(f64::abs(1. - ray_perpendicular.squared_length())) * n;
         ray_perpendicular + ray_parallel
     }
@@ -276,7 +276,10 @@ impl Index for Coordinate {}
 // v[0_usize]; // Forced to do this
 // ...
 // ```
-impl<T: Phantom, C> std::ops::Index<C> for Vec3f<T> where C: Index {
+impl<T: Phantom, C> std::ops::Index<C> for Vec3f<T>
+where
+    C: Index,
+{
     type Output = Precision;
 
     fn index(&self, index: C) -> &Self::Output {
@@ -284,7 +287,10 @@ impl<T: Phantom, C> std::ops::Index<C> for Vec3f<T> where C: Index {
     }
 }
 
-impl<T: Phantom, C> std::ops::IndexMut<C> for Vec3f<T> where C: Index {
+impl<T: Phantom, C> std::ops::IndexMut<C> for Vec3f<T>
+where
+    C: Index,
+{
     fn index_mut(&mut self, index: C) -> &mut Self::Output {
         &mut self.items[index.into()]
     }
