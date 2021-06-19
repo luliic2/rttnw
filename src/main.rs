@@ -203,10 +203,8 @@ fn render(mut width: u32, mut aspect_ratio: f64, mut samples: usize, scene: usiz
         .into_par_iter()
         .rev()
         .progress_with(progress)
-        .flat_map(|j| {
-            (0..width)
-                .into_par_iter()
-                .map(|i| {
+        .flat_map(|x| rayon::iter::repeat(x).zip(0..width))
+        .map(|(j, i)| {
                     // Calculate the color `ns` times and average the result
                     let col = (0..samples).fold(Vec3f::<Color>::repeat(0.0), |acc, _| {
                         let mut rng = rand::thread_rng();
@@ -224,9 +222,7 @@ fn render(mut width: u32, mut aspect_ratio: f64, mut samples: usize, scene: usiz
                         a: 255,
                     }
                 })
-                .collect::<Vec<_>>()
-        })
-        .collect();
+        .collect::<Vec<_>>();
     let buffer: &[u8] = bytemuck::cast_slice(&image);
     image::save_buffer("image.png", buffer, width, height, image::ColorType::Rgba8).unwrap();
     Some(())
